@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Покрути модель</title>
+<style>
+  :root {
+    color-scheme: light;
+    --surface: #fcfcfb; --ink: #0b0b0b; --ink2: #52514e; --muted: #898781;
+    --grid: #e1e0d9; --axis: #c3c2b7; --s1: #2a78d6; --s2: #eb6834; --good: #006300;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--surface); color: var(--ink);
+         font: 15px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif; }
+  .wrap { max-width: 760px; margin: 0 auto; padding: 16px; }
+  h1 { font-size: 18px; margin: 0 0 4px; font-weight: 600; }
+  .sub { color: var(--ink2); margin: 0 0 12px; }
+  .legend { display: flex; gap: 16px; flex-wrap: wrap; color: var(--ink2); font-size: 13px; margin-bottom: 4px; }
+  .key { display: inline-flex; align-items: center; gap: 6px; }
+  .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--s1); }
+  .line { width: 16px; height: 2px; background: var(--s2); }
+  .line.algo { background: var(--muted); }
+  svg { width: 100%; height: auto; display: block; touch-action: none; }
+  .controls { display: grid; grid-template-columns: 1fr 1fr; gap: 12px 24px; margin-top: 8px; }
+  label { display: block; font-size: 13px; color: var(--ink2); }
+  label b { color: var(--ink); font-variant-numeric: tabular-nums; }
+  input[type=range] { width: 100%; accent-color: var(--s1); }
+  .panel { display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px 24px; margin-top: 12px; }
+  .formula { font-size: 20px; font-weight: 600; font-variant-numeric: tabular-nums; }
+  .err { color: var(--ink2); }
+  .err b { color: var(--ink); font-size: 20px; font-variant-numeric: tabular-nums; }
+  .msg { min-height: 1.5em; margin-top: 8px; color: var(--good); font-weight: 600; }
+  button { font: inherit; padding: 6px 12px; border-radius: 8px; border: 1px solid var(--axis);
+           background: #fff; color: var(--ink); cursor: pointer; }
+  button:disabled { color: var(--muted); cursor: not-allowed; }
+  .tip { position: absolute; pointer-events: none; background: #fff; border: 1px solid rgba(11,11,11,.1);
+         border-radius: 6px; padding: 4px 8px; font-size: 12px; color: var(--ink); box-shadow: 0 2px 6px rgba(0,0,0,.08); }
+  @media (max-width: 520px) { .controls { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<div class="wrap" style="position:relative">
+  <h1>Покрути модель</h1>
+  <p class="sub" id="sub"></p>
+  <div class="legend">
+    <span class="key"><span class="dot"></span>ученики</span>
+    <span class="key"><span class="line"></span>твоя линия</span>
+    <span class="key" id="algoKey" hidden><span class="line algo"></span>линия алгоритма</span>
+  </div>
+  <svg id="plot" role="img" aria-label="Точечный график и настраиваемая линия"></svg>
+  <div class="controls">
+    <label>k — наклон линии: <b id="kVal"></b><input id="k" type="range"></label>
+    <label>b — сдвиг линии: <b id="bVal"></b><input id="b" type="range"></label>
+  </div>
+  <div class="panel">
+    <span class="formula" id="formula"></span>
+    <span class="err">Средняя ошибка: <b id="mae"></b> балла</span>
+    <button id="reveal" disabled>Показать, что нашёл алгоритм</button>
+  </div>
+  <div class="msg" id="msg" aria-live="polite"></div>
+  <div class="tip" id="tip" hidden></div>
+</div>
+<script>
+const DATA = {"subtitle": "Каждая точка — ученик: по горизонтали средняя за контрольные в I триместре, по вертикали годовая оценка. Двигай ползунки, чтобы линия как можно лучше проходила через точки.", "x_label": "Контрольные, средняя отметка", "y_label": "Годовая оценка", "x_range": [1.8, 5.2], "y_range": [1.5, 5.5], "x_ticks": [2, 2.5, 3, 3.5, 4, 4.5, 5], "y_ticks": [2, 3, 4, 5], "points": [{"x": 2.33, "y": 2, "y_display": 1.88}, {"x": 2.67, "y": 3, "y_display": 2.92}, {"x": 5.0, "y": 5, "y_display": 4.96}, {"x": 4.0, "y": 4, "y_display": 4.0}, {"x": 2.67, "y": 2, "y_display": 2.04}, {"x": 3.33, "y": 3, "y_display": 3.08}, {"x": 4.0, "y": 5, "y_display": 5.12}, {"x": 4.0, "y": 4, "y_display": 3.88}, {"x": 3.0, "y": 3, "y_display": 2.92}, {"x": 3.33, "y": 4, "y_display": 3.96}, {"x": 4.33, "y": 5, "y_display": 5.0}, {"x": 4.33, "y": 5, "y_display": 5.04}, {"x": 4.67, "y": 2, "y_display": 2.08}, {"x": 5.0, "y": 5, "y_display": 5.12}, {"x": 4.33, "y": 4, "y_display": 3.88}, {"x": 3.33, "y": 4, "y_display": 3.92}, {"x": 4.33, "y": 5, "y_display": 4.96}, {"x": 4.33, "y": 4, "y_display": 4.0}, {"x": 2.0, "y": 5, "y_display": 5.04}, {"x": 4.0, "y": 4, "y_display": 4.08}, {"x": 2.67, "y": 3, "y_display": 3.12}, {"x": 4.0, "y": 4, "y_display": 3.88}, {"x": 3.33, "y": 2, "y_display": 1.92}, {"x": 3.67, "y": 3, "y_display": 2.96}, {"x": 3.0, "y": 3, "y_display": 3.0}, {"x": 4.33, "y": 5, "y_display": 5.04}, {"x": 5.0, "y": 4, "y_display": 4.08}, {"x": 4.0, "y": 4, "y_display": 4.12}, {"x": 3.33, "y": 4, "y_display": 3.88}, {"x": 3.33, "y": 3, "y_display": 2.92}, {"x": 3.67, "y": 3, "y_display": 2.96}, {"x": 3.0, "y": 5, "y_display": 5.0}, {"x": 4.67, "y": 5, "y_display": 5.04}, {"x": 4.67, "y": 5, "y_display": 5.08}, {"x": 4.33, "y": 4, "y_display": 4.12}, {"x": 3.67, "y": 3, "y_display": 2.88}, {"x": 2.0, "y": 2, "y_display": 1.92}, {"x": 3.0, "y": 3, "y_display": 2.96}, {"x": 4.67, "y": 5, "y_display": 5.0}, {"x": 5.0, "y": 5, "y_display": 5.04}, {"x": 5.0, "y": 5, "y_display": 5.08}, {"x": 5.0, "y": 5, "y_display": 5.12}, {"x": 3.0, "y": 4, "y_display": 3.88}, {"x": 3.33, "y": 4, "y_display": 3.92}, {"x": 4.0, "y": 3, "y_display": 2.96}], "k_slider": {"min": -1, "max": 2, "step": 0.05}, "b_slider": {"min": -3, "max": 6, "step": 0.1}, "k0": 0, "b0": 3, "best": {"k": 0.708, "b": 1.182, "mae": 0.603}, "threshold": 0.653, "moves_before_reveal": 6};
+const svg = document.getElementById('plot');
+// рисуем в реальных пикселях контейнера: подписи 12px остаются 12px и на телефоне
+const W = Math.max(320, Math.min(640, document.querySelector('.wrap').clientWidth - 32));
+const H = Math.round(Math.max(280, W * 0.6)), M = { l: 48, r: 12, t: 12, b: 44 };
+svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+const [x0, x1] = DATA.x_range, [y0, y1] = DATA.y_range;
+const sx = x => M.l + (x - x0) / (x1 - x0) * (W - M.l - M.r);
+const sy = y => H - M.b - (y - y0) / (y1 - y0) * (H - M.t - M.b);
+const ru = (v, d) => v.toFixed(d).replace('.', ',').replace('-', '−');
+const NS = 'http://www.w3.org/2000/svg';
+const el = (tag, attrs, parent = svg) => { const e = document.createElementNS(NS, tag);
+  for (const [k, v] of Object.entries(attrs)) e.setAttribute(k, v); parent.appendChild(e); return e; };
+
+document.getElementById('sub').textContent = DATA.subtitle;
+for (const yv of DATA.y_ticks) {
+  el('line', { x1: M.l, x2: W - M.r, y1: sy(yv), y2: sy(yv), stroke: 'var(--grid)', 'stroke-width': 1 });
+  el('text', { x: M.l - 8, y: sy(yv) + 4, 'text-anchor': 'end', fill: 'var(--muted)', 'font-size': 12 }).textContent = yv;
+}
+for (const xv of DATA.x_ticks) {
+  el('text', { x: sx(xv), y: H - M.b + 18, 'text-anchor': 'middle', fill: 'var(--muted)', 'font-size': 12 }).textContent = ru(xv, 1);
+}
+el('line', { x1: M.l, x2: W - M.r, y1: H - M.b, y2: H - M.b, stroke: 'var(--axis)', 'stroke-width': 1 });
+el('text', { x: (M.l + W - M.r) / 2, y: H - 6, 'text-anchor': 'middle', fill: 'var(--ink2)', 'font-size': 13 }).textContent = DATA.x_label;
+el('text', { x: 14, y: (M.t + H - M.b) / 2, 'text-anchor': 'middle', fill: 'var(--ink2)', 'font-size': 13,
+  transform: `rotate(-90 14 ${(M.t + H - M.b) / 2})` }).textContent = DATA.y_label;
+
+const clip = el('clipPath', { id: 'area' }); el('rect', { x: M.l, y: M.t, width: W - M.l - M.r, height: H - M.t - M.b }, clip);
+const resid = el('g', { 'clip-path': 'url(#area)' });
+const algoLine = el('line', { stroke: 'var(--muted)', 'stroke-width': 2, 'stroke-linecap': 'round', visibility: 'hidden', 'clip-path': 'url(#area)' });
+const userLine = el('line', { stroke: 'var(--s2)', 'stroke-width': 2, 'stroke-linecap': 'round', 'clip-path': 'url(#area)' });
+const tip = document.getElementById('tip');
+for (const p of DATA.points) {
+  const c = el('circle', { cx: sx(p.x), cy: sy(p.y_display), r: 5, fill: 'var(--s1)', stroke: 'var(--surface)', 'stroke-width': 2 });
+  const hit = el('circle', { cx: sx(p.x), cy: sy(p.y_display), r: 11, fill: 'transparent' });
+  hit.addEventListener('pointerenter', () => {
+    tip.hidden = false; tip.textContent = `${DATA.x_label}: ${ru(p.x, 2)} → годовая ${p.y}`;
+    const r = svg.getBoundingClientRect(), s = r.width / W;
+    tip.style.left = (svg.offsetLeft + sx(p.x) * s + 10) + 'px'; tip.style.top = (svg.offsetTop + sy(p.y_display) * s - 30) + 'px';
+  });
+  hit.addEventListener('pointerleave', () => { tip.hidden = true; });
+}
+
+const kIn = document.getElementById('k'), bIn = document.getElementById('b');
+Object.assign(kIn, DATA.k_slider); Object.assign(bIn, DATA.b_slider);
+kIn.value = DATA.k0; bIn.value = DATA.b0;
+const mae = (k, b) => DATA.points.reduce((s, p) => s + Math.abs(p.y - (k * p.x + b)), 0) / DATA.points.length;
+const setLine = (line, k, b) => { line.setAttribute('x1', sx(x0)); line.setAttribute('x2', sx(x1));
+  line.setAttribute('y1', sy(k * x0 + b)); line.setAttribute('y2', sy(k * x1 + b)); };
+let moves = 0;
+function update() {
+  const k = +kIn.value, b = +bIn.value;
+  setLine(userLine, k, b);
+  resid.replaceChildren();
+  for (const p of DATA.points) el('line', { x1: sx(p.x), x2: sx(p.x), y1: sy(p.y_display), y2: sy(k * p.x + b),
+    stroke: 'var(--axis)', 'stroke-width': 1 }, resid);
+  const e = mae(k, b);
+  document.getElementById('kVal').textContent = ru(k, 2);
+  document.getElementById('bVal').textContent = ru(b, 1);
+  document.getElementById('formula').textContent = `y = ${ru(k, 2)}·x ${b < 0 ? '−' : '+'} ${ru(Math.abs(b), 1)}`;
+  document.getElementById('mae').textContent = ru(e, 2);
+  document.getElementById('msg').textContent = e <= DATA.threshold
+    ? 'Отлично! Твоя линия почти так же хороша, как та, что нашёл бы алгоритм.' : '';
+}
+for (const inp of [kIn, bIn]) inp.addEventListener('input', () => {
+  update(); if (++moves >= DATA.moves_before_reveal) document.getElementById('reveal').disabled = false; });
+document.getElementById('reveal').addEventListener('click', () => {
+  setLine(algoLine, DATA.best.k, DATA.best.b); algoLine.setAttribute('visibility', 'visible');
+  document.getElementById('algoKey').hidden = false;
+  document.getElementById('msg').textContent =
+    `Алгоритм: y = ${ru(DATA.best.k, 2)}·x + ${ru(DATA.best.b, 2)}, средняя ошибка ${ru(DATA.best.mae, 2)} балла.`;
+});
+update();
+</script>
+</body>
+</html>

@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Разложи слова по смыслу</title>
+<style>
+  :root { color-scheme: light; --surface: #fcfcfb; --ink: #0b0b0b; --ink2: #52514e; --muted: #898781;
+          --grid: #e1e0d9; --axis: #c3c2b7; --s1: #2a78d6; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--surface); color: var(--ink); font: 15px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif; }
+  .wrap { max-width: 760px; margin: 0 auto; padding: 16px; }
+  h1 { font-size: 18px; margin: 0 0 4px; font-weight: 600; }
+  .sub { color: var(--ink2); margin: 0 0 12px; }
+  svg { width: 100%; height: auto; display: block; touch-action: none; user-select: none; }
+  .word { cursor: grab; }
+  .word rect { fill: #fff; stroke: var(--s1); stroke-width: 2; }
+  .word text { fill: var(--ink); font-size: 15px; }
+  .ref circle { fill: var(--muted); stroke: var(--surface); stroke-width: 2; }
+  .ref text { fill: var(--ink2); font-size: 13px; }
+  .row { display: flex; gap: 12px; align-items: center; margin-top: 10px; flex-wrap: wrap; }
+  button { font: inherit; padding: 6px 12px; border-radius: 8px; border: 1px solid var(--axis); background: #fff; cursor: pointer; }
+  .msg { color: var(--ink2); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Разложи слова по смыслу</h1>
+  <p class="sub">Перетащи слова на поле: похожие по смыслу — ближе друг к другу, разные — дальше.</p>
+  <svg id="plane" role="img" aria-label="Поле для раскладывания слов"></svg>
+  <div class="row">
+    <button id="show">Сравнить с подготовленной картой</button>
+    <span class="msg" id="msg" aria-live="polite"></span>
+  </div>
+</div>
+<script>
+const DATA = {"words": [{"w": "кот", "x": 1.0, "y": 4.2}, {"w": "кошка", "x": 1.5, "y": 3.8}, {"w": "собака", "x": 2.8, "y": 3.2}, {"w": "автомобиль", "x": 6.3, "y": 1.3}, {"w": "автобус", "x": 7.1, "y": 0.9}], "x_range": [0, 8], "y_range": [0, 5], "reveal_text": "Похожие слова оказались рядом: животные — в одном углу, транспорт — в другом. Расположение точки несёт информацию о смысле."};
+const NS = 'http://www.w3.org/2000/svg';
+const svg = document.getElementById('plane');
+// рисуем в реальных пикселях контейнера; плашки слов переносятся в несколько рядов на узком экране
+const W = Math.max(320, Math.min(640, document.querySelector('.wrap').clientWidth - 32));
+const CHIP = 112, PER_ROW = Math.max(1, Math.floor((W - 20) / CHIP));
+const ROWS = Math.ceil(DATA.words.length / PER_ROW), TRAY = 26 + ROWS * 36;
+const H = Math.round(Math.max(300, W * 0.55)) + TRAY;
+svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+const el = (tag, attrs, parent = svg) => { const e = document.createElementNS(NS, tag);
+  for (const [k, v] of Object.entries(attrs)) e.setAttribute(k, v); parent.appendChild(e); return e; };
+el('rect', { x: 0, y: 0, width: W, height: H - TRAY, fill: 'var(--surface)', stroke: 'var(--grid)' });
+el('text', { x: 8, y: H - TRAY + 18, fill: 'var(--muted)', 'font-size': 12 }).textContent = 'слова:';
+const refLayer = el('g', { visibility: 'hidden' });
+const [x0, x1] = DATA.x_range, [y0, y1] = DATA.y_range;
+const sx = x => 40 + (x - x0) / (x1 - x0) * (W - 80), sy = y => (H - TRAY - 30) - (y - y0) / (y1 - y0) * (H - TRAY - 60);
+for (const w of DATA.words) {
+  const g = el('g', { class: 'ref' }, refLayer);
+  el('circle', { cx: sx(w.x), cy: sy(w.y), r: 5 }, g);
+  el('text', { x: sx(w.x) + 9, y: sy(w.y) + 4 }, g).textContent = w.w;
+}
+DATA.words.forEach((w, i) => {
+  const cx = 16 + CHIP / 2 + (i % PER_ROW) * CHIP, cy = H - TRAY + 44 + Math.floor(i / PER_ROW) * 36;
+  const g = el('g', { class: 'word', transform: `translate(${cx}, ${cy})` });
+  const t = el('text', { 'text-anchor': 'middle', y: 5 }, g); t.textContent = w.w;
+  const bw = t.getComputedTextLength() + 20;
+  g.insertBefore(el('rect', { x: -bw / 2, y: -14, width: bw, height: 28, rx: 14 }, g), t);
+  let drag = null;
+  g.addEventListener('pointerdown', e => { g.setPointerCapture(e.pointerId); drag = true; g.style.cursor = 'grabbing'; });
+  g.addEventListener('pointermove', e => { if (!drag) return;
+    const r = svg.getBoundingClientRect(), s = W / r.width;
+    const x = Math.min(W - 30, Math.max(30, (e.clientX - r.left) * s)), y = Math.min(H - 16, Math.max(16, (e.clientY - r.top) * s));
+    g.setAttribute('transform', `translate(${x}, ${y})`); });
+  g.addEventListener('pointerup', () => { drag = null; g.style.cursor = ''; });
+});
+document.getElementById('show').addEventListener('click', () => {
+  refLayer.setAttribute('visibility', 'visible');
+  document.getElementById('msg').textContent = DATA.reveal_text;
+});
+</script>
+</body>
+</html>
