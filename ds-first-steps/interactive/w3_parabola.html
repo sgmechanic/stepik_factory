@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Парабола внутри ошибки</title>
+<style>
+  :root { color-scheme: light; --surface: #fcfcfb; --ink: #0b0b0b; --ink2: #52514e; --muted: #898781;
+          --grid: #e1e0d9; --axis: #c3c2b7; --s1: #2a78d6; --s2: #eb6834; --good: #006300; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--surface); color: var(--ink); font: 15px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif; }
+  .wrap { max-width: 760px; margin: 0 auto; padding: 16px; }
+  h1 { font-size: 18px; margin: 0 0 4px; font-weight: 600; }
+  .sub { color: var(--ink2); margin: 0 0 10px; }
+  .row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .cap { font-size: 13px; color: var(--ink2); margin-bottom: 2px; }
+  svg { width: 100%; height: auto; display: block; }
+  label { display: block; font-size: 13px; color: var(--ink2); margin-top: 10px; }
+  label b { color: var(--ink); font-variant-numeric: tabular-nums; }
+  input[type=range] { width: 100%; accent-color: var(--s2); }
+  .panel { display: flex; flex-wrap: wrap; gap: 6px 24px; margin-top: 8px; align-items: baseline; }
+  .big { font-size: 20px; font-weight: 600; font-variant-numeric: tabular-nums; }
+  .msg { min-height: 1.5em; margin-top: 6px; color: var(--good); font-weight: 600; }
+  @media (max-width: 560px) { .row { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Парабола внутри ошибки</h1>
+  <p class="sub" id="sub"></p>
+  <div class="row">
+    <div><div class="cap">Ученики и линия y = k·x + b (k зафиксирован)</div><svg id="scatter"></svg></div>
+    <div><div class="cap">Сумма квадратов ошибок S(b)</div><svg id="curve"></svg></div>
+  </div>
+  <label>b — сдвиг линии: <b id="bVal"></b><input id="b" type="range"></label>
+  <div class="panel">
+    <span>S(b) = <span class="big" id="sVal"></span></span>
+  </div>
+  <div class="msg" id="msg" aria-live="polite"></div>
+</div>
+<script>
+const DATA = {"subtitle": "Наклон k = 0,88 зафиксирован. Двигай b и следи за суммой квадратов ошибок справа.", "k": 0.88, "b_range": [-1.08, 1.92], "b_start": -0.78, "b_star": 0.424, "b_ticks": [-1.1, -0.1, 0.9, 1.9], "s_ticks": [0, 53, 106], "points": [{"x": 3.67, "y": 4, "y_display": 3.88}, {"x": 4.0, "y": 4, "y_display": 3.92}, {"x": 3.33, "y": 4, "y_display": 3.96}, {"x": 4.0, "y": 4, "y_display": 4.0}, {"x": 5.0, "y": 5, "y_display": 5.04}, {"x": 4.0, "y": 4, "y_display": 4.08}, {"x": 5.0, "y": 5, "y_display": 5.12}, {"x": 3.67, "y": 5, "y_display": 4.88}, {"x": 3.0, "y": 3, "y_display": 2.92}, {"x": 2.33, "y": 2, "y_display": 1.96}, {"x": 3.33, "y": 4, "y_display": 4.0}, {"x": 4.0, "y": 4, "y_display": 4.04}, {"x": 4.33, "y": 5, "y_display": 5.08}, {"x": 3.67, "y": 5, "y_display": 5.12}, {"x": 3.67, "y": 4, "y_display": 3.88}, {"x": 4.0, "y": 3, "y_display": 2.92}, {"x": 2.67, "y": 3, "y_display": 2.96}, {"x": 4.33, "y": 3, "y_display": 3.0}, {"x": 2.67, "y": 3, "y_display": 3.04}, {"x": 3.0, "y": 3, "y_display": 3.08}, {"x": 3.0, "y": 4, "y_display": 4.12}, {"x": 3.0, "y": 3, "y_display": 2.88}, {"x": 4.33, "y": 5, "y_display": 4.92}, {"x": 3.33, "y": 3, "y_display": 2.96}, {"x": 4.0, "y": 4, "y_display": 4.0}, {"x": 2.33, "y": 3, "y_display": 3.04}, {"x": 4.0, "y": 3, "y_display": 3.08}, {"x": 4.67, "y": 5, "y_display": 5.12}, {"x": 5.0, "y": 5, "y_display": 4.88}, {"x": 4.33, "y": 4, "y_display": 3.92}, {"x": 4.0, "y": 3, "y_display": 2.96}, {"x": 4.67, "y": 4, "y_display": 4.0}, {"x": 2.67, "y": 2, "y_display": 2.04}, {"x": 3.33, "y": 2, "y_display": 2.08}, {"x": 4.67, "y": 4, "y_display": 4.12}, {"x": 5.0, "y": 5, "y_display": 4.88}, {"x": 4.33, "y": 4, "y_display": 3.92}, {"x": 4.67, "y": 4, "y_display": 3.96}, {"x": 3.67, "y": 4, "y_display": 4.0}, {"x": 3.67, "y": 3, "y_display": 3.04}]};
+const NS = 'http://www.w3.org/2000/svg';
+const ru = (v, d) => v.toFixed(d).replace('.', ',').replace('-', '−');
+const el = (tag, attrs, parent) => { const e = document.createElementNS(NS, tag);
+  for (const [k, v] of Object.entries(attrs)) e.setAttribute(k, v); parent.appendChild(e); return e; };
+const wrapW = document.querySelector('.wrap').clientWidth - 32;
+const W = Math.max(280, Math.min(360, window.innerWidth < 560 ? wrapW : (wrapW - 12) / 2)), H = Math.round(W * 0.8);
+const M = { l: 40, r: 10, t: 10, b: 30 };
+const S = b => DATA.points.reduce((s, p) => s + (p.y - DATA.k * p.x - b) ** 2, 0);
+const [b0, b1] = DATA.b_range, sMax = Math.max(S(b0), S(b1));
+document.getElementById('sub').textContent = DATA.subtitle;
+
+function frame(svg, xr, yr, xt, yt, xl) {
+  svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+  const sx = x => M.l + (x - xr[0]) / (xr[1] - xr[0]) * (W - M.l - M.r);
+  const sy = y => H - M.b - (y - yr[0]) / (yr[1] - yr[0]) * (H - M.t - M.b);
+  for (const v of yt) { el('line', { x1: M.l, x2: W - M.r, y1: sy(v), y2: sy(v), stroke: 'var(--grid)' }, svg);
+    el('text', { x: M.l - 6, y: sy(v) + 4, 'text-anchor': 'end', fill: 'var(--muted)', 'font-size': 11 }, svg).textContent = ru(v, 0); }
+  for (const v of xt) el('text', { x: sx(v), y: H - M.b + 15, 'text-anchor': 'middle', fill: 'var(--muted)', 'font-size': 11 }, svg).textContent = ru(v, 1);
+  el('text', { x: (M.l + W - M.r) / 2, y: H - 2, 'text-anchor': 'middle', fill: 'var(--ink2)', 'font-size': 12 }, svg).textContent = xl;
+  return [sx, sy];
+}
+const sc = document.getElementById('scatter'), cv = document.getElementById('curve');
+const [px, py] = frame(sc, [1.8, 5.2], [1.5, 5.5], [2, 3, 4, 5], [2, 3, 4, 5], 'контрольные');
+const [cx, cy] = frame(cv, [b0, b1], [0, sMax * 1.05], DATA.b_ticks, DATA.s_ticks, 'b');
+const resid = el('g', {}, sc);
+for (const p of DATA.points) el('circle', { cx: px(p.x), cy: py(p.y_display), r: 4, fill: 'var(--s1)', stroke: 'var(--surface)', 'stroke-width': 2 }, sc);
+const line = el('line', { stroke: 'var(--s2)', 'stroke-width': 2, 'stroke-linecap': 'round' }, sc);
+let d = '';
+for (let i = 0; i <= 80; i++) { const b = b0 + (b1 - b0) * i / 80; d += (i ? 'L' : 'M') + cx(b).toFixed(1) + ' ' + cy(S(b)).toFixed(1); }
+el('path', { d, fill: 'none', stroke: 'var(--s1)', 'stroke-width': 2 }, cv);
+const dot = el('circle', { r: 6, fill: 'var(--s2)', stroke: 'var(--surface)', 'stroke-width': 2 }, cv);
+
+const bIn = document.getElementById('b');
+Object.assign(bIn, { min: b0, max: b1, step: 0.01 });
+bIn.value = DATA.b_start;
+function update() {
+  const b = +bIn.value, k = DATA.k;
+  line.setAttribute('x1', px(1.8)); line.setAttribute('x2', px(5.2));
+  line.setAttribute('y1', py(k * 1.8 + b)); line.setAttribute('y2', py(k * 5.2 + b));
+  resid.replaceChildren();
+  for (const p of DATA.points) el('line', { x1: px(p.x), x2: px(p.x), y1: py(p.y_display), y2: py(k * p.x + b), stroke: 'var(--axis)' }, resid);
+  dot.setAttribute('cx', cx(b)); dot.setAttribute('cy', cy(S(b)));
+  document.getElementById('bVal').textContent = ru(b, 2);
+  document.getElementById('sVal').textContent = ru(S(b), 1);
+  document.getElementById('msg').textContent = Math.abs(b - DATA.b_star) <= 0.03
+    ? 'Ты в вершине параболы: сумма квадратов ошибок здесь наименьшая.' : '';
+}
+bIn.addEventListener('input', update);
+update();
+</script>
+</body>
+</html>
