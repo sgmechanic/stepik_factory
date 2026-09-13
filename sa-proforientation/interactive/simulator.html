@@ -63,7 +63,7 @@
 <body>
 <div class="wrap">
   <h1>Что войдёт в дневник V2</h1>
-  <p class="sub">Сервер остался прежним: денег на новый в этом году нет. Включай и выключай функции — и смотри, кто остаётся доволен.</p>
+  <p class="sub">Считаем в утренний час пик — тот самый, из-за которого всё и началось. Сервер остался прежним: денег на новый в этом году нет.</p>
   <div class="cols">
     <div>
       <h2>Функции</h2>
@@ -72,7 +72,7 @@
     <div>
       <h2>Что получится</h2>
       <div class="meter">
-        <div class="row"><span class="cap">Главная страница открывается за</span>
+        <div class="row"><span class="cap">Главная страница в пик открывается за</span>
           <span class="val" id="msVal"></span></div>
         <div class="track"><div class="fill" id="msFill"></div></div>
         <div class="limit-note">Ученику нужно уложиться в 2,0 с</div>
@@ -90,8 +90,8 @@
   <div class="verdict" id="verdict"></div>
 </div>
 <script>
-const DATA = {"features": [{"id": "summary", "name": "Сводка по школе на главной", "hint": "то, ради чего директор всё затеял", "ms": 1400, "load": 2.2}, {"id": "bulk", "name": "Выставление оценок всему классу на одном экране", "hint": "четыре минуты перемены", "ms": 250, "load": 1.4}, {"id": "mobile", "name": "Мобильная версия", "hint": "облегчает главную страницу", "ms": -500, "load": 0.3}, {"id": "charts", "name": "Графики динамики оценок", "hint": "красиво и тяжело", "ms": 900, "load": 1.6}, {"id": "notify", "name": "Уведомления о новых оценках", "hint": "страница лёгкая, сервер страдает", "ms": 150, "load": 2.8}], "stakeholders": [{"id": "director", "name": "Директор", "need": "сводка по школе, чтобы не собирать отчёт руками", "requires": ["summary"]}, {"id": "teacher", "name": "Учитель", "need": "выставить оценки за перемену", "requires": ["bulk"]}, {"id": "student", "name": "Ученик", "need": "открыть с телефона за пару секунд", "requires": ["mobile"], "max_ms": 2000}, {"id": "sysadmin", "name": "Сисадмин", "need": "чтобы не легло в утренний пик", "requires": [], "max_load": 6.5}], "base_ms": 1303, "base_load": 4.0, "capacity": 6.5};
-const MS_SCALE = 4500, LOAD_SCALE = 14;
+const DATA = {"features": [{"id": "summary", "name": "Сводка по школе на главной", "hint": "то, ради чего директор всё затеял", "ms": 1500, "load": 2.2}, {"id": "bulk", "name": "Выставление оценок всему классу на одном экране", "hint": "четыре минуты перемены", "ms": 300, "load": 1.4}, {"id": "mobile", "name": "Мобильная версия", "hint": "лёгкая страница вместо тяжёлой", "ms": 0, "load": 0.3, "factor": 0.45}, {"id": "charts", "name": "Графики динамики оценок", "hint": "красиво и тяжело", "ms": 1000, "load": 1.6}, {"id": "notify", "name": "Уведомления о новых оценках", "hint": "страница лёгкая, сервер страдает", "ms": 200, "load": 2.8}], "stakeholders": [{"id": "director", "name": "Директор", "need": "сводка по школе, чтобы не собирать отчёт руками", "requires": ["summary"]}, {"id": "teacher", "name": "Учитель", "need": "выставить оценки за перемену", "requires": ["bulk"]}, {"id": "student", "name": "Ученик", "need": "открыть с телефона за пару секунд", "requires": ["mobile"], "max_ms": 2000}, {"id": "sysadmin", "name": "Сисадмин", "need": "чтобы не легло в утренний пик", "requires": [], "max_load": 6.5}], "base_ms": 2853, "base_load": 4.0, "capacity": 6.5};
+const MS_SCALE = 6200, LOAD_SCALE = 14;
 const on = new Set();
 
 function esc(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
@@ -114,7 +114,10 @@ document.getElementById('capNote').textContent =
 
 function render() {
   const chosen = DATA.features.filter(f => on.has(f.id));
-  const ms = DATA.base_ms + chosen.reduce((s, f) => s + f.ms, 0);
+  // Сначала складываем работу страницы, потом применяем множители: лёгкая мобильная вёрстка
+  // не вычитает фиксированные миллисекунды, а уменьшает всё, что страница успела набрать.
+  const ms = chosen.reduce((v, f) => v * (f.factor ?? 1),
+                           DATA.base_ms + chosen.reduce((s, f) => s + f.ms, 0));
   const load = DATA.base_load + chosen.reduce((s, f) => s + f.load, 0);
   const overloaded = load > DATA.capacity;
 
@@ -159,8 +162,8 @@ function render() {
     v.innerHTML = `<b>Довольны ${happy} из ${total}.</b> Это лучшее, чего здесь можно добиться. ` +
       'Дальше начинается не расчёт, а разговор с тем, кто остался без своего.';
   } else if (on.size === DATA.features.length) {
-    v.innerHTML = '<b>Включено всё.</b> Главная открывается медленнее, чем в старом дневнике, ' +
-      `сервер за красной чертой — и довольны всё равно ${happy} из ${total}.`;
+    v.innerHTML = '<b>Включено всё.</b> Страница даже стала быстрее — но сервер ушёл далеко за красную ' +
+      `черту, и в 8:15 дневник просто ляжет. Тогда скорость страницы уже не важна: довольны ${happy} из ${total}.`;
   } else if (on.size === 0) {
     v.innerHTML = 'Сервер спокоен, потому что дневник ничего не делает. ' +
       'Ничего не менять — тоже решение, и у него тоже есть цена.';
