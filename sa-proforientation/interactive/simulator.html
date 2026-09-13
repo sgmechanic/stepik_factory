@@ -1,0 +1,175 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Что войдёт в дневник V2</title>
+<style>
+  :root {
+    color-scheme: light;
+    --surface: #fcfcfb; --ink: #0b0b0b; --ink2: #52514e; --muted: #898781;
+    --grid: #e1e0d9; --axis: #c3c2b7; --s1: #2a78d6; --s2: #eb6834; --good: #006300;
+    --bad: #b5271b;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--surface); color: var(--ink);
+         font: 15px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif; }
+  .wrap { max-width: 900px; margin: 0 auto; padding: 16px; }
+  h1 { font-size: 18px; margin: 0 0 4px; font-weight: 600; }
+  .sub { color: var(--ink2); margin: 0 0 16px; }
+  .cols { display: grid; grid-template-columns: minmax(260px, 1fr) minmax(260px, 1fr); gap: 22px;
+          align-items: start; }
+  h2 { font-size: 13px; color: var(--ink2); font-weight: 600; margin: 0 0 8px;
+       letter-spacing: .03em; text-transform: uppercase; }
+
+  .feat { display: flex; gap: 10px; align-items: flex-start; padding: 9px 10px; border-radius: 10px;
+          border: 1px solid var(--grid); background: #fff; margin-bottom: 7px; cursor: pointer;
+          transition: border-color .14s ease; }
+  .feat:hover { border-color: var(--axis); }
+  .feat input { margin: 2px 0 0; accent-color: var(--s1); width: 17px; height: 17px; flex: none; }
+  .feat .name { display: block; font-size: 14px; }
+  .feat .hint { display: block; color: var(--muted); font-size: 12px; margin-top: 1px; }
+
+  .meter { margin-bottom: 16px; }
+  .meter .row { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 5px; }
+  .meter .cap { font-size: 13px; color: var(--ink2); }
+  .meter .val { font-variant-numeric: tabular-nums; font-weight: 600; font-size: 17px; }
+  .meter .val.bad { color: var(--bad); }
+  .track { position: relative; height: 9px; border-radius: 999px; background: #ececE4; overflow: hidden; }
+  .fill { height: 100%; border-radius: 999px; background: var(--s1);
+          transition: width .38s cubic-bezier(.22,.8,.24,1), background-color .25s ease; }
+  .fill.bad { background: var(--bad); }
+  .limit { position: absolute; top: -3px; bottom: -3px; width: 2px; background: var(--ink);
+           opacity: .45; }
+  .limit-note { font-size: 12px; color: var(--muted); margin-top: 4px; }
+
+  .people { display: grid; gap: 7px; margin-top: 4px; }
+  .p { display: flex; gap: 10px; align-items: flex-start; padding: 8px 10px; border-radius: 10px;
+       border: 1px solid var(--grid); background: #fff;
+       transition: border-color .25s ease, background-color .25s ease; }
+  .p.ok { border-color: #bfe0cc; background: #f4faf6; }
+  .p .face { font-size: 16px; line-height: 1.25; flex: none; width: 18px; text-align: center; }
+  .p .who { display: block; font-weight: 600; font-size: 14px; }
+  .p .why { display: block; color: var(--ink2); font-size: 12.5px; margin-top: 1px; }
+  .p.ok .why { color: var(--good); }
+
+  .verdict { margin-top: 18px; padding: 12px 14px; border-radius: 10px; background: #f3f2ec;
+             color: var(--ink2); min-height: 3em; }
+  .verdict b { color: var(--ink); }
+  @media (prefers-reduced-motion: reduce) { .fill { transition: none; } }
+  @media (max-width: 640px) { .cols { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Что войдёт в дневник V2</h1>
+  <p class="sub">Сервер остался прежним: денег на новый в этом году нет. Включай и выключай функции — и смотри, кто остаётся доволен.</p>
+  <div class="cols">
+    <div>
+      <h2>Функции</h2>
+      <div id="feats"></div>
+    </div>
+    <div>
+      <h2>Что получится</h2>
+      <div class="meter">
+        <div class="row"><span class="cap">Главная страница открывается за</span>
+          <span class="val" id="msVal"></span></div>
+        <div class="track"><div class="fill" id="msFill"></div></div>
+        <div class="limit-note">Ученику нужно уложиться в 2,0 с</div>
+      </div>
+      <div class="meter">
+        <div class="row"><span class="cap">Нагрузка в утренний пик</span>
+          <span class="val" id="loadVal"></span></div>
+        <div class="track"><div class="fill" id="loadFill"></div><div class="limit" id="limit"></div></div>
+        <div class="limit-note" id="capNote"></div>
+      </div>
+      <h2>Кто доволен</h2>
+      <div class="people" id="people"></div>
+    </div>
+  </div>
+  <div class="verdict" id="verdict"></div>
+</div>
+<script>
+const DATA = {"features": [{"id": "summary", "name": "Сводка по школе на главной", "hint": "то, ради чего директор всё затеял", "ms": 1400, "load": 2.2}, {"id": "bulk", "name": "Выставление оценок всему классу на одном экране", "hint": "четыре минуты перемены", "ms": 250, "load": 1.4}, {"id": "mobile", "name": "Мобильная версия", "hint": "облегчает главную страницу", "ms": -500, "load": 0.3}, {"id": "charts", "name": "Графики динамики оценок", "hint": "красиво и тяжело", "ms": 900, "load": 1.6}, {"id": "notify", "name": "Уведомления о новых оценках", "hint": "страница лёгкая, сервер страдает", "ms": 150, "load": 2.8}], "stakeholders": [{"id": "director", "name": "Директор", "need": "сводка по школе, чтобы не собирать отчёт руками", "requires": ["summary"]}, {"id": "teacher", "name": "Учитель", "need": "выставить оценки за перемену", "requires": ["bulk"]}, {"id": "student", "name": "Ученик", "need": "открыть с телефона за пару секунд", "requires": ["mobile"], "max_ms": 2000}, {"id": "sysadmin", "name": "Сисадмин", "need": "чтобы не легло в утренний пик", "requires": [], "max_load": 6.5}], "base_ms": 1303, "base_load": 4.0, "capacity": 6.5};
+const MS_SCALE = 4500, LOAD_SCALE = 14;
+const on = new Set();
+
+function esc(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+function ru(x, d) { return x.toFixed(d).replace('.', ','); }
+
+document.getElementById('feats').innerHTML = DATA.features.map(f => `
+  <label class="feat">
+    <input type="checkbox" data-id="${f.id}">
+    <span><span class="name">${esc(f.name)}</span><span class="hint">${esc(f.hint)}</span></span>
+  </label>`).join('');
+
+document.querySelectorAll('.feat input').forEach(cb => {
+  cb.onchange = () => { cb.checked ? on.add(cb.dataset.id) : on.delete(cb.dataset.id); render(); };
+});
+
+document.getElementById('limit').style.left =
+  (100 * DATA.capacity / LOAD_SCALE).toFixed(1) + '%';
+document.getElementById('capNote').textContent =
+  `Сервер выдерживает ${ru(DATA.capacity, 1)} — дальше дневник ложится`;
+
+function render() {
+  const chosen = DATA.features.filter(f => on.has(f.id));
+  const ms = DATA.base_ms + chosen.reduce((s, f) => s + f.ms, 0);
+  const load = DATA.base_load + chosen.reduce((s, f) => s + f.load, 0);
+  const overloaded = load > DATA.capacity;
+
+  const msVal = document.getElementById('msVal');
+  msVal.textContent = ru(ms / 1000, 1) + ' с';
+  msVal.classList.toggle('bad', ms > 2000);
+  const msFill = document.getElementById('msFill');
+  msFill.style.width = Math.min(100, 100 * ms / MS_SCALE).toFixed(1) + '%';
+  msFill.classList.toggle('bad', ms > 2000);
+
+  const loadVal = document.getElementById('loadVal');
+  loadVal.textContent = ru(load, 1);
+  loadVal.classList.toggle('bad', overloaded);
+  const loadFill = document.getElementById('loadFill');
+  loadFill.style.width = Math.min(100, 100 * load / LOAD_SCALE).toFixed(1) + '%';
+  loadFill.classList.toggle('bad', overloaded);
+
+  let happy = 0;
+  document.getElementById('people').innerHTML = DATA.stakeholders.map(s => {
+    const missing = s.requires.filter(r => !on.has(r));
+    const slow = s.max_ms !== undefined && ms > s.max_ms;
+    const heavy = s.max_load !== undefined && load > s.max_load;
+    const ok = !missing.length && !slow && !heavy;
+    happy += ok ? 1 : 0;
+    let why = s.need;
+    if (ok) why = 'получил, что просил';
+    else if (heavy) why = 'сервер не выдержит утренний пик';
+    else if (slow) why = `страница открывается ${ru(ms / 1000, 1)} с — с телефона это долго`;
+    else why = 'не хватает: ' + missing.map(r =>
+      DATA.features.find(f => f.id === r).name.toLowerCase()).join(', ');
+    return `<div class="p ${ok ? 'ok' : ''}">
+        <span class="face">${ok ? '✓' : '·'}</span>
+        <span><span class="who">${esc(s.name)}</span><span class="why">${esc(why)}</span></span>
+      </div>`;
+  }).join('');
+
+  const total = DATA.stakeholders.length;
+  const v = document.getElementById('verdict');
+  if (happy === total) {
+    v.innerHTML = '<b>Так не должно было получиться.</b> Сообщи автору курса: симулятор сломан.';
+  } else if (happy === total - 1) {
+    v.innerHTML = `<b>Довольны ${happy} из ${total}.</b> Это лучшее, чего здесь можно добиться. ` +
+      'Дальше начинается не расчёт, а разговор с тем, кто остался без своего.';
+  } else if (on.size === DATA.features.length) {
+    v.innerHTML = '<b>Включено всё.</b> Главная открывается медленнее, чем в старом дневнике, ' +
+      `сервер за красной чертой — и довольны всё равно ${happy} из ${total}.`;
+  } else if (on.size === 0) {
+    v.innerHTML = 'Сервер спокоен, потому что дневник ничего не делает. ' +
+      'Ничего не менять — тоже решение, и у него тоже есть цена.';
+  } else {
+    v.innerHTML = `Довольны ${happy} из ${total}. Попробуй другую комбинацию.`;
+  }
+}
+
+render();
+</script>
+</body>
+</html>

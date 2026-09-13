@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Разговор с директором</title>
+<style>
+  :root {
+    color-scheme: light;
+    --surface: #fcfcfb; --ink: #0b0b0b; --ink2: #52514e; --muted: #898781;
+    --grid: #e1e0d9; --axis: #c3c2b7; --s1: #2a78d6; --s2: #eb6834; --good: #006300;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--surface); color: var(--ink);
+         font: 15px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif; }
+  .wrap { max-width: 760px; margin: 0 auto; padding: 16px; }
+  h1 { font-size: 18px; margin: 0 0 4px; font-weight: 600; }
+  .sub { color: var(--ink2); margin: 0 0 14px; }
+  .turn { color: var(--muted); font-size: 13px; margin-bottom: 6px; }
+  .q { font-weight: 600; margin-bottom: 10px; }
+  .opts { display: grid; gap: 8px; }
+  button.opt { font: inherit; text-align: left; padding: 10px 12px; border-radius: 10px;
+               border: 1px solid var(--axis); background: #fff; color: var(--ink); cursor: pointer;
+               transition: border-color .12s ease, transform .12s ease; }
+  button.opt:hover { border-color: var(--s1); }
+  button.opt:active { transform: scale(.995); }
+  .said { border-left: 3px solid var(--axis); padding: 2px 0 2px 12px; margin: 14px 0 0; }
+  .said .who { color: var(--muted); font-size: 13px; }
+  .said .line { margin-top: 2px; }
+  .mine .who { color: var(--s1); }
+  .verdict { margin-top: 12px; padding: 10px 12px; border-radius: 10px; background: #f3f2ec;
+             color: var(--ink2); }
+  .verdict b { color: var(--ink); }
+  .facts { margin-top: 18px; border-top: 1px solid var(--grid); padding-top: 12px; }
+  .facts h2 { font-size: 14px; margin: 0 0 8px; color: var(--ink2); font-weight: 600; }
+  .facts ul { margin: 0; padding-left: 18px; }
+  .facts li { margin-bottom: 4px; }
+  .facts .none { color: var(--muted); }
+  .count { font-variant-numeric: tabular-nums; }
+  .final { margin-top: 16px; padding: 12px 14px; border-radius: 10px; border: 1px solid var(--axis);
+           background: #fff; }
+  .final b { color: var(--good); }
+  .actions { margin-top: 14px; }
+  button.again { font: inherit; padding: 7px 14px; border-radius: 8px; border: 1px solid var(--axis);
+                 background: #fff; color: var(--ink2); cursor: pointer; }
+  .fade { animation: fade .22s ease-out; }
+  @keyframes fade { from { opacity: 0; transform: translateY(3px); } to { opacity: 1; transform: none; } }
+  @media (prefers-reduced-motion: reduce) { .fade { animation: none; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Разговор с директором</h1>
+  <p class="sub">У тебя три вопроса. Директор ответит честно на любой — вопрос только в том, что ты успеешь узнать.</p>
+  <div id="stage"></div>
+  <div class="facts">
+    <h2>Что ты узнал: <span class="count" id="score">0</span> из <span class="count" id="total"></span></h2>
+    <ul id="facts"><li class="none">пока ничего</li></ul>
+  </div>
+  <div class="actions" id="actions" hidden>
+    <button class="again" id="again">Пройти разговор заново</button>
+  </div>
+</div>
+<script>
+const DATA = {"rounds": [{"round": 1, "question": "Ты в кабинете директора. С чего начнёшь?", "options": [{"text": "Какой дизайн вам нравится?", "answer": "Ну… чтобы аккуратно. Посветлее, наверное. Вы же специалист, вам виднее.", "learned": null, "verdict": "Ответ ни о чём — и виноват вопрос, а не собеседник."}, {"text": "Что вы делаете сейчас, когда нужен отчёт по успеваемости?", "answer": "Завуч выгружает оценки, неделю сводит их в таблице, а потом мы ещё неделю ищем, где цифры разошлись. И так каждый месяц.", "learned": "Отчёт собирают вручную, и это занимает недели.", "verdict": "Вопрос про работу, а не про решение. Отсюда видно настоящую задачу."}, {"text": "Вам нужна выгрузка в Excel?", "answer": "Да, конечно.", "learned": null, "verdict": "Закрытый вопрос почти всегда получает «да». Ты не узнал, зачем и нужно ли вообще."}]}, {"round": 2, "question": "Директор ждёт следующего вопроса.", "options": [{"text": "А что происходит, если отчёт опоздает?", "answer": "Департамент просит объяснительную. В прошлом году я писал две.", "learned": "Опоздание отчёта стоит объяснительной — значит, срок важнее красоты.", "verdict": "Ты выяснил цену ошибки. Теперь понятно, что здесь критично."}, {"text": "Сколько человек будет пользоваться дневником?", "answer": "Все. Ученики, учителя, я. Человек семьсот, наверное.", "learned": "Пользователей около семисот, и заходят они одновременно.", "verdict": "Полезное число, хотя вопрос и не самый сильный."}, {"text": "Может, сделать дневник в виде мобильного приложения?", "answer": "Ой, а можно? Давайте, если недорого.", "learned": null, "verdict": "Ты предложил решение, и его немедленно приняли. Так в проект попадают функции, которых никто не просил."}]}, {"round": 3, "question": "Остался один вопрос.", "options": [{"text": "Кто ещё смотрит этот отчёт?", "answer": "Департамент образования. Формат у них свой, и меняют они его примерно раз в год.", "learned": "Формат отчёта задаёт департамент, и он меняется.", "verdict": "Ты нашёл человека, которого никогда не увидишь, — а требования у него обязательные."}, {"text": "Когда нужен готовый дневник?", "answer": "Хорошо бы к весне. Но если не успеем — переживём.", "learned": "Срок мягкий: к весне, но не любой ценой.", "verdict": "Срок узнать полезно. Но ты упустил кое-кого важного."}, {"text": "Какой у нас бюджет?", "answer": "Столько, сколько дадут. На сервер в этом году точно не дадут.", "learned": "Денег на новый сервер в этом году нет.", "verdict": "Важное ограничение. Но про людей ты так ничего и не спросил."}]}], "total_facts": 4};
+const stage = document.getElementById('stage');
+const factsEl = document.getElementById('facts');
+const scoreEl = document.getElementById('score');
+const actions = document.getElementById('actions');
+document.getElementById('total').textContent = DATA.total_facts;
+
+let turn = 0, facts = [], transcript = [];
+
+function esc(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+
+function renderFacts() {
+  scoreEl.textContent = facts.length;
+  factsEl.innerHTML = facts.length
+    ? facts.map(f => `<li>${esc(f)}</li>`).join('')
+    : '<li class="none">пока ничего</li>';
+}
+
+function renderTranscript() {
+  return transcript.map(t => `
+    <div class="said mine"><div class="who">ты</div><div class="line">${esc(t.q)}</div></div>
+    <div class="said"><div class="who">директор</div><div class="line">${esc(t.a)}</div></div>
+    <div class="verdict">${esc(t.v)}</div>`).join('');
+}
+
+function render() {
+  if (turn < DATA.rounds.length) {
+    const r = DATA.rounds[turn];
+    stage.innerHTML = renderTranscript() + `
+      <div class="fade" style="margin-top:18px">
+        <div class="turn">Вопрос ${turn + 1} из ${DATA.rounds.length}</div>
+        <div class="q">${esc(r.question)}</div>
+        <div class="opts">${r.options.map((o, i) =>
+          `<button class="opt" data-i="${i}">${esc(o.text)}</button>`).join('')}</div>
+      </div>`;
+    stage.querySelectorAll('.opt').forEach(b => b.onclick = () => choose(+b.dataset.i));
+  } else {
+    const missed = DATA.total_facts - facts.length;
+    const verdict = missed === 0
+      ? '<b>Ты собрал всё, что можно было собрать за три вопроса.</b> Заметь: ни один из них не был про то, как дневник должен выглядеть.'
+      : (facts.length === 0
+        ? 'Ты потратил три вопроса и не узнал ничего. Директор при этом был вежлив и отвечал честно — просто ты спрашивал не о том.'
+        : `Ты узнал ${facts.length} из ${DATA.total_facts}. Не узнанное никуда не денется — оно всплывёт через полгода, когда менять что-то будет дорого.`);
+    stage.innerHTML = renderTranscript() + `<div class="final fade">${verdict}</div>`;
+    actions.hidden = false;
+  }
+  renderFacts();
+}
+
+function choose(i) {
+  const o = DATA.rounds[turn].options[i];
+  transcript.push({ q: o.text, a: o.answer, v: o.verdict });
+  if (o.learned && !facts.includes(o.learned)) facts.push(o.learned);
+  turn++;
+  render();
+}
+
+document.getElementById('again').onclick = () => {
+  turn = 0; facts = []; transcript = []; actions.hidden = true; render();
+};
+
+render();
+</script>
+</body>
+</html>

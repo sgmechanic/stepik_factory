@@ -1,0 +1,137 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Допиши требование</title>
+<style>
+  :root {
+    color-scheme: light;
+    --surface: #fcfcfb; --ink: #0b0b0b; --ink2: #52514e; --muted: #898781;
+    --grid: #e1e0d9; --axis: #c3c2b7; --s1: #2a78d6; --s2: #eb6834; --good: #006300;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--surface); color: var(--ink);
+         font: 15px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif; }
+  .wrap { max-width: 900px; margin: 0 auto; padding: 16px; }
+  h1 { font-size: 18px; margin: 0 0 4px; font-weight: 600; }
+  .sub { color: var(--ink2); margin: 0 0 6px; }
+  .req { margin: 0 0 16px; padding: 10px 12px; border-left: 3px solid var(--axis);
+         background: #f3f2ec; color: var(--ink2); }
+  .req b { color: var(--ink); }
+  .cols { display: grid; grid-template-columns: minmax(240px, 320px) 1fr; gap: 20px; align-items: start; }
+  .group { margin-bottom: 14px; }
+  .group .label { font-size: 13px; color: var(--ink2); margin-bottom: 5px; }
+  .seg { display: flex; flex-wrap: wrap; gap: 6px; }
+  .seg button { font: inherit; font-size: 13px; padding: 5px 10px; border-radius: 999px;
+                border: 1px solid var(--axis); background: #fff; color: var(--ink2); cursor: pointer;
+                transition: background .12s ease, color .12s ease, border-color .12s ease; }
+  .seg button:hover { border-color: var(--s1); }
+  .seg button[aria-pressed="true"] { background: var(--s1); border-color: var(--s1); color: #fff; }
+  .screen { border: 1px solid var(--grid); border-radius: 12px; background: #fff; overflow: hidden; }
+  .screen .bar { padding: 9px 14px; border-bottom: 1px solid var(--grid); font-weight: 600;
+                 background: #f7f6f1; }
+  .scroll { max-height: 360px; overflow: auto; }
+  table { border-collapse: collapse; width: 100%; font-size: 14px; }
+  th, td { text-align: left; padding: 6px 14px; border-bottom: 1px solid var(--grid); }
+  th { position: sticky; top: 0; background: #fff; color: var(--ink2); font-weight: 600; font-size: 13px; }
+  td.num { font-variant-numeric: tabular-nums; }
+  tr.gone td { color: var(--s2); }
+  .tag { font-size: 11px; border: 1px solid currentColor; border-radius: 999px; padding: 0 5px;
+         margin-left: 6px; vertical-align: 1px; }
+  .empty { color: var(--muted); }
+  .count { padding: 8px 14px; color: var(--muted); font-size: 13px; border-top: 1px solid var(--grid); }
+  .msg { margin-top: 12px; min-height: 1.5em; font-weight: 600; color: var(--good); }
+  .flash { animation: flash .45s ease-out; }
+  @keyframes flash { from { background: #eaf2fd; } to { background: transparent; } }
+  @media (prefers-reduced-motion: reduce) { .flash { animation: none; } }
+  @media (max-width: 640px) { .cols { grid-template-columns: 1fr; } .scroll { max-height: 300px; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Допиши требование</h1>
+  <p class="sub">Слева — решения, которые ты не записал. Справа — то, что из-за этого прислал подрядчик.</p>
+  <p class="req">Твоя запись в блокноте: <b>«На странице класса должен быть список класса»</b></p>
+  <div class="cols">
+    <div id="controls"></div>
+    <div>
+      <div class="screen">
+        <div class="bar" id="title"></div>
+        <div class="scroll"><table id="tbl"></table></div>
+        <div class="count" id="count"></div>
+      </div>
+      <div class="msg" id="msg" aria-live="polite"></div>
+    </div>
+  </div>
+</div>
+<script>
+const DATA = {"rows": [{"code": "S01533", "gone": false, "grade": 5, "avg": 5.0}, {"code": "S01470", "gone": false, "grade": 5, "avg": 5.0}, {"code": "S01453", "gone": false, "grade": 4, "avg": 4.0}, {"code": "S01528", "gone": false, "grade": 3, "avg": 3.3}, {"code": "S02112", "gone": false, "grade": 5, "avg": 4.7}, {"code": "S01524", "gone": false, "grade": 4, "avg": 3.7}, {"code": "S01482", "gone": false, "grade": 4, "avg": 4.0}, {"code": "S01494", "gone": false, "grade": 5, "avg": 4.7}, {"code": "S02114", "gone": false, "grade": 2, "avg": 3.0}, {"code": "S01499", "gone": false, "grade": 4, "avg": 4.3}, {"code": "S01436", "gone": false, "grade": 4, "avg": 4.0}, {"code": "S01487", "gone": false, "grade": 4, "avg": 3.7}, {"code": "S02120", "gone": false, "grade": 4, "avg": 4.0}, {"code": "S01476", "gone": false, "grade": 4, "avg": 4.3}, {"code": "S02119", "gone": false, "grade": 4, "avg": 4.0}, {"code": "S01515", "gone": false, "grade": 4, "avg": 4.0}, {"code": "S01461", "gone": false, "grade": 5, "avg": 4.3}, {"code": "S01501", "gone": false, "grade": 4, "avg": 3.3}, {"code": "S01457", "gone": false, "grade": 4, "avg": 4.0}, {"code": "S01434", "gone": false, "grade": 4, "avg": 3.3}, {"code": "S01426", "gone": false, "grade": null, "avg": null}, {"code": "S01429", "gone": true, "grade": null, "avg": null}, {"code": "S01507", "gone": false, "grade": 5, "avg": 4.7}, {"code": "S01428", "gone": false, "grade": 4, "avg": 4.7}, {"code": "S02121", "gone": false, "grade": 4, "avg": 4.0}, {"code": "S01506", "gone": false, "grade": 4, "avg": 4.7}, {"code": "S02125", "gone": false, "grade": 4, "avg": 4.0}, {"code": "S01427", "gone": true, "grade": null, "avg": null}, {"code": "S01523", "gone": false, "grade": 4, "avg": 4.3}], "refinements": [{"id": "order", "label": "В каком порядке", "default": "asis", "options": [{"id": "asis", "text": "как лежит в базе"}, {"id": "bycode", "text": "по коду ученика"}, {"id": "byavg", "text": "по среднему баллу"}]}, {"id": "who", "label": "Кто входит в список", "default": "all", "options": [{"id": "all", "text": "все, кто когда-либо числился"}, {"id": "current", "text": "только те, кто учится сейчас"}]}, {"id": "show", "label": "Что показывать рядом", "default": "nothing", "options": [{"id": "nothing", "text": "ничего"}, {"id": "avg", "text": "средний балл за триместр"}, {"id": "last", "text": "оценку за I триместр"}]}, {"id": "empty", "label": "Если оценок нет", "default": "blank", "options": [{"id": "blank", "text": "пустая клетка"}, {"id": "dash", "text": "прочерк"}, {"id": "text", "text": "надпись «нет данных»"}]}, {"id": "title", "label": "Заголовок страницы", "default": "fixed", "options": [{"id": "fixed", "text": "как прислали, намертво"}, {"id": "dynamic", "text": "название открытого класса"}]}], "target": {"order": "bycode", "who": "current", "show": "avg", "empty": "dash", "title": "dynamic"}, "class_name": "10А", "fixed_title": "Список класса 10Б"};
+const state = {};
+DATA.refinements.forEach(r => state[r.id] = r.default);
+
+function esc(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+
+document.getElementById('controls').innerHTML = DATA.refinements.map(r => `
+  <div class="group">
+    <div class="label">${esc(r.label)}</div>
+    <div class="seg" data-group="${r.id}">
+      ${r.options.map(o => `<button data-id="${o.id}">${esc(o.text)}</button>`).join('')}
+    </div>
+  </div>`).join('');
+
+document.querySelectorAll('.seg').forEach(seg => {
+  seg.querySelectorAll('button').forEach(b => {
+    b.onclick = () => { state[seg.dataset.group] = b.dataset.id; render(true); };
+  });
+});
+
+function emptyCell() {
+  if (state.empty === 'dash') return '—';
+  if (state.empty === 'text') return '<span class="empty">нет данных</span>';
+  return '';
+}
+
+function render(animate) {
+  document.querySelectorAll('.seg').forEach(seg => {
+    seg.querySelectorAll('button').forEach(b =>
+      b.setAttribute('aria-pressed', String(state[seg.dataset.group] === b.dataset.id)));
+  });
+
+  let rows = DATA.rows.slice();
+  if (state.who === 'current') rows = rows.filter(r => !r.gone);
+  if (state.order === 'bycode') rows.sort((a, b) => a.code.localeCompare(b.code));
+  if (state.order === 'byavg') rows.sort((a, b) => (b.avg ?? -1) - (a.avg ?? -1));
+
+  const extra = state.show === 'avg' ? 'Средний балл за контрольные'
+              : state.show === 'last' ? 'Оценка за I триместр' : null;
+  const head = `<thead><tr><th>Ученик</th>${extra ? `<th>${esc(extra)}</th>` : ''}</tr></thead>`;
+  const body = rows.map(r => {
+    const value = state.show === 'avg' ? r.avg : state.show === 'last' ? r.grade : null;
+    const cell = extra
+      ? `<td class="num">${value === null || value === undefined
+          ? emptyCell() : (state.show === 'avg' ? value.toFixed(1).replace('.', ',') : value)}</td>`
+      : '';
+    const tag = r.gone ? '<span class="tag">выбыл</span>' : '';
+    return `<tr class="${r.gone ? 'gone' : ''}"><td>${esc(r.code)}${tag}</td>${cell}</tr>`;
+  }).join('');
+  const tbl = document.getElementById('tbl');
+  tbl.innerHTML = head + `<tbody>${body}</tbody>`;
+  if (animate) { tbl.classList.remove('flash'); void tbl.offsetWidth; tbl.classList.add('flash'); }
+
+  document.getElementById('title').textContent =
+    state.title === 'dynamic' ? `Список класса ${DATA.class_name}` : DATA.fixed_title;
+  const gone = rows.filter(r => r.gone).length;
+  document.getElementById('count').textContent =
+    `строк: ${rows.length}` + (gone ? `, из них выбывших: ${gone}` : '');
+
+  const done = DATA.refinements.every(r => state[r.id] === DATA.target[r.id]);
+  document.getElementById('msg').textContent = done
+    ? 'Вот теперь это тот список, который ты имел в виду. В твоём требовании было спрятано пять решений — и все пять принял за тебя кто-то другой.'
+    : '';
+}
+
+render(false);
+</script>
+</body>
+</html>
