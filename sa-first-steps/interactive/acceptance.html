@@ -1,0 +1,147 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ПриёмкаV2</title>
+<style>
+  :root {
+    color-scheme: light;
+    --surface: #fcfcfb; --ink: #0b0b0b; --ink2: #52514e; --muted: #898781;
+    --grid: #e1e0d9; --axis: #c3c2b7; --s1: #2a78d6; --s2: #eb6834; --good: #006300;
+    --bad: #b5271b;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--surface); color: var(--ink);
+         font: 15px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif; }
+  .wrap { max-width: 900px; margin: 0 auto; padding: 16px; }
+  h1 { font-size: 18px; margin: 0 0 4px; font-weight: 600; }
+  .sub { color: var(--ink2); margin: 0 0 14px; }
+
+  .tabs { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 14px; }
+  .tab { font: inherit; font-size: 13px; padding: 6px 11px; border-radius: 999px;
+         border: 1px solid var(--axis); background: #fff; color: var(--ink2); cursor: pointer; }
+  .tab[aria-pressed="true"] { background: var(--s1); border-color: var(--s1); color: #fff; }
+  .tab.seen::after { content: " ·"; }
+  .tab.judged::after { content: " ✓"; color: var(--good); }
+  .tab[aria-pressed="true"].judged::after { color: #fff; }
+
+  .screen { border: 1px solid var(--grid); border-radius: 12px; background: #fff; overflow: hidden;
+            margin-bottom: 14px; }
+  .screen .bar { padding: 9px 14px; border-bottom: 1px solid var(--grid); font-weight: 600;
+                 background: #f7f6f1; }
+  .screen .body { padding: 12px 14px; }
+  table { border-collapse: collapse; width: 100%; font-size: 13.5px; }
+  th, td { text-align: left; padding: 5px 10px; border-bottom: 1px solid var(--grid); }
+  th { color: var(--muted); font-weight: 600; font-size: 12px; }
+  .note { color: var(--ink2); font-size: 13px; margin-top: 8px; }
+
+  .spec { border-left: 3px solid var(--axis); padding: 4px 0 4px 12px; margin: 0 0 12px;
+          color: var(--ink2); font-size: 14px; }
+  .spec b { color: var(--ink); }
+
+  .verdicts { display: grid; gap: 7px; }
+  button.v { font: inherit; text-align: left; padding: 9px 12px; border-radius: 10px;
+             border: 1px solid var(--axis); background: #fff; color: var(--ink); cursor: pointer; }
+  button.v:hover { border-color: var(--s1); }
+  button.v:disabled { cursor: default; opacity: .75; }
+  button.v.picked { border-color: var(--s1); background: #eaf2fd; }
+  button.v.right { border-color: #bfe0cc; background: #f4faf6; }
+  .explain { margin-top: 10px; padding: 10px 12px; border-radius: 10px; background: #f3f2ec;
+             color: var(--ink2); }
+  .explain b { color: var(--ink); }
+
+  .tally { margin-top: 16px; border-top: 1px solid var(--grid); padding-top: 12px;
+           color: var(--ink2); font-size: 14px; }
+  .tally b { color: var(--ink); }
+  .final { margin-top: 12px; padding: 12px 14px; border-radius: 10px; border: 1px solid var(--axis);
+           background: #fff; }
+  .fade { animation: fade .22s ease-out; }
+  @keyframes fade { from { opacity: 0; transform: translateY(3px); } to { opacity: 1; transform: none; } }
+  @media (prefers-reduced-motion: reduce) { .fade { animation: none; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Приёмка: что прислал подрядчик</h1>
+  <p class="sub">Шесть экранов. По каждому сверь то, что видишь, с тем, что написано в ТЗ, и реши,
+     чей это промах. Категорию выбираешь один раз.</p>
+
+  <div class="tabs" id="tabs"></div>
+  <div id="stage"></div>
+  <div class="tally" id="tally"></div>
+  <div id="final"></div>
+</div>
+<script>
+const DATA = {"screens": [{"id": "speed", "short": "Скорость", "answer": "broken", "title": "Замер: главная страница с телефона, 8:05–8:30", "columns": ["День", "Замеров", "Не дольше 2 с", "Худший замер"], "rows": [["Понедельник", "120", "78 %", "4,1 с"], ["Вторник", "120", "81 %", "3,7 с"], ["Среда", "120", "76 %", "4,4 с"]], "note": "Замеры предоставлены подрядчиком.", "spec": "главная с телефона открывается не дольше 2 с в промежутке 8:05–8:30 в 95 случаях из 100", "explain": "Порог записан, условия записаны, доля записана — и не выполнена: 76–81 % против 95 %. Спорить не о чем, это прямое нарушение, и переделка за счёт подрядчика. Заметь, что возможным этот разговор сделала формулировка, написанная три недели назад."}, {"id": "rollback", "short": "Откат", "answer": "broken", "title": "Инструкция по откату на V1", "columns": ["Шаг", "Что делать", "Сколько занимает"], "rows": [["1", "Остановить V2, уведомить пользователей", "5 минут"], ["2", "Восстановить базу из ночной копии", "около 40 минут"], ["3", "Запустить V1, проверить вход", "10 минут"]], "note": "Итого около 55 минут.", "spec": "откат на V1 возможен в течение 10 минут после запуска", "explain": "Требование сисадмина — то самое, без которого он не давал запускать. 55 минут вместо 10. Формально подрядчик сделал откат, но не тот, который требовался, и это нарушение записанного порога."}, {"id": "empty", "short": "Пустые оценки", "answer": "gap", "title": "Страница класса 10А, средний балл за триместр", "columns": ["Ученик", "Средний балл"], "rows": [["S01425", "4,3"], ["S01426", "0,0"], ["S01428", "4,7"], ["S01430", "2,7"]], "note": "У S01426 нет ни одной оценки: он пришёл после начала года.", "spec": "рядом с учеником показывается средний балл за контрольные текущего триместра", "explain": "Про отсутствие оценок в ТЗ не сказано ничего — значит, подрядчик имел право решить сам, и ноль здесь самый естественный выбор. Это твоя дыра, и переделка за счёт школы. Обиднее всего, что именно этот случай разбирался на шестой неделе — а в задачу уточнение не попало."}, {"id": "rights", "short": "Права", "answer": "gap", "title": "Страница класса глазами учителя физики", "columns": ["Ученик", "Физика", "Математика", "Русский"], "rows": [["S01425", "5", "4", "4"], ["S01428", "4", "5", "5"]], "note": "Учитель физики видит оценки по всем предметам класса.", "spec": "учитель-предметник видит оценки своего класса по своему предмету", "explain": "Здесь сказано, что предметник видит, но не сказано, что он НЕ видит остального. Подрядчик прочитал это как разрешение, а не как ограничение. Права надо писать запретами: «видит только по своему предмету, оценки по другим предметам не показываются»."}, {"id": "report", "short": "Отчёт", "answer": "literal", "title": "Сводный отчёт по школе за ноябрь", "columns": ["Параллель", "Средний балл", "Собран"], "rows": [["9-е классы", "3,91", "за 6 минут"], ["10-е классы", "4,02", "за 6 минут"], ["11-е классы", "4,11", "за 6 минут"]], "note": "Отчёт открывается кнопкой «Сформировать» и считается заново при каждом нажатии.", "spec": "сводный отчёт по школе за месяц собирается автоматически, без ручного сведения; готов до 5-го числа", "explain": "Требование выполнено: отчёт собирается сам и укладывается в срок. Но «автоматически» подрядчик понял как «по кнопке», и завучу придётся помнить, что кнопку надо нажать. Нарушения нет — есть расхождение с тем, что имелось в виду. Такое решается разговором, а не требованием."}, {"id": "bulk", "short": "Оценки классу", "answer": "literal", "title": "Выставление оценок классу, 10А, урок математики", "columns": ["Ученик", "Оценка"], "rows": [["S01425", "выбрать"], ["S01426", "выбрать"], ["S01428", "выбрать"]], "note": "Все ученики на одном экране. Оценка выбирается из списка: раскрыть, выбрать, подтвердить — три действия на ученика.", "spec": "учитель выставляет оценки всему классу на одном экране за время перемены (4 минуты)", "explain": "Один экран — есть. Но три действия на ученика при тридцати учениках это девяносто действий, и в четыре минуты учитель не уложится. Буква требования выполнена, смысл потерян. В критерии приёмки стоило записать проверку целиком: «выставить оценки классу из 30 человек за 4 минуты»."}], "categories": [{"id": "broken", "label": "Нарушено ТЗ — требуем исправить за счёт подрядчика"}, {"id": "gap", "label": "В ТЗ этого не было — моя недоработка, переделка за наш счёт"}, {"id": "literal", "label": "Формально выполнено, а вышло плохо — договариваемся"}]};
+const picked = {};                       // id экрана → выбранная категория
+let current = 0;
+
+function esc(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+
+function renderTabs() {
+  document.getElementById('tabs').innerHTML = DATA.screens.map((s, i) => `
+    <button class="tab${picked[s.id] ? ' judged' : ''}" data-i="${i}"
+            aria-pressed="${i === current}">${esc(s.short)}</button>`).join('');
+  document.querySelectorAll('.tab').forEach(b =>
+    b.onclick = () => { current = +b.dataset.i; render(); });
+}
+
+function renderScreen(s) {
+  const rows = s.rows.map(r => `<tr>${r.map(c => `<td>${esc(c)}</td>`).join('')}</tr>`).join('');
+  const head = s.columns.map(c => `<th>${esc(c)}</th>`).join('');
+  return `<div class="screen">
+      <div class="bar">${esc(s.title)}</div>
+      <div class="body">
+        <table><thead><tr>${head}</tr></thead><tbody>${rows}</tbody></table>
+        ${s.note ? `<div class="note">${esc(s.note)}</div>` : ''}
+      </div>
+    </div>`;
+}
+
+function render() {
+  renderTabs();
+  const s = DATA.screens[current];
+  const chosen = picked[s.id];
+  const buttons = DATA.categories.map(c => {
+    const cls = chosen ? (c.id === s.answer ? ' right' : (c.id === chosen ? ' picked' : '')) : '';
+    return `<button class="v${cls}" data-c="${c.id}" ${chosen ? 'disabled' : ''}>${esc(c.label)}</button>`;
+  }).join('');
+  document.getElementById('stage').innerHTML = `
+    <div class="fade">
+      ${renderScreen(s)}
+      <p class="spec"><b>В твоём ТЗ написано:</b> ${esc(s.spec)}</p>
+      <div class="verdicts">${buttons}</div>
+      ${chosen ? `<div class="explain">${chosen === s.answer
+          ? '<b>Верно.</b> ' : '<b>Не совсем.</b> '}${esc(s.explain)}</div>` : ''}
+    </div>`;
+  if (!chosen) {
+    document.querySelectorAll('.v').forEach(b =>
+      b.onclick = () => { picked[s.id] = b.dataset.c; render(); });
+  }
+  renderTally();
+}
+
+function renderTally() {
+  const done = Object.keys(picked).length;
+  const right = DATA.screens.filter(s => picked[s.id] === s.answer).length;
+  const mine = DATA.screens.filter(s => picked[s.id] && s.answer === 'gap').length;
+  document.getElementById('tally').innerHTML =
+    `Разобрано экранов: <b>${done}</b> из <b>${DATA.screens.length}</b>. ` +
+    `Категория угадана верно: <b>${right}</b>.`;
+  const el = document.getElementById('final');
+  if (done < DATA.screens.length) { el.innerHTML = ''; return; }
+  const byGap = DATA.screens.filter(s => s.answer === 'gap').length;
+  el.innerHTML = `<div class="final fade">
+      <b>Протокол готов.</b> Из ${DATA.screens.length} расхождений нарушением ТЗ оказались
+      ${DATA.screens.filter(s => s.answer === 'broken').length},
+      дырами в самом ТЗ — ${byGap},
+      а ${DATA.screens.filter(s => s.answer === 'literal').length} подрядчик выполнил буквально.
+      Последние две категории — твоя часть ответственности, и платить за переделку по ним будет школа.
+    </div>`;
+}
+
+render();
+</script>
+</body>
+</html>
