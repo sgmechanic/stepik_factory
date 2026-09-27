@@ -124,7 +124,7 @@ function screenJournal(sc) {
         <button class="btn" id="save"><span class="zone" data-zone="save_typo">${esc(sc.save_label)}</span></button>
         <label class="note"><input type="checkbox" id="offline"> связь пропала</label>
       </div>
-      <div class="note" id="save-note"></div>
+      <div class="note zone" data-zone="offline" id="save-note">Поставь оценки, включи «связь пропала» и сохрани.</div>
     </div>
   </div>`;
 }
@@ -140,9 +140,10 @@ function screenStudent(sc) {
         <b>${esc(sc.avg)}</b></div>
       <div class="kv"><span>Домашние задания</span>
         <b><span class="zone" data-zone="hw_zero">${esc(sc.homework)}</span></b></div>
+      <div class="kv zone" data-zone="notify"><span>${esc(sc.notify_label)}</span>
+        <b>${esc(sc.notify)}</b></div>
       <div class="rank zone" data-zone="rank">Твоё место в классе: <b>${esc(sc.rank)}</b>
         из ${esc(String(sc.class_size))} — <span class="badge">по среднему баллу</span></div>
-      <p class="note zone" data-zone="last_year">${esc(sc.last_year)}</p>
     </div>
   </div>`;
 }
