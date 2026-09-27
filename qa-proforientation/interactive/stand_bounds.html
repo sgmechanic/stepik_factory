@@ -97,7 +97,7 @@
 </div></dialog>
 
 <script>
-const DATA = {"title": "Дневник V2 — поле оценки", "sub": "Тот же журнал, но проверяем одно поле. Вводи значения и смотри, что скажет система.", "stand": {"mode": "bounds", "screens": [], "zones": {}, "bounds": {"title": "Поле оценки", "hint": "школьная шкала 2–5", "accepts_from": 1, "accepts_to": 5, "saved": "оценка сохранена", "rejected": "система не приняла значение", "empty": "система не приняла пустое поле", "not_number": "система не приняла: это не число"}}};
+const DATA = {"title": "Дневник V2 — поле оценки", "sub": "Тот же журнал, но проверяем одно поле. Вводи значения и смотри, что скажет система.", "stand": {"mode": "bounds", "screens": [], "zones": {}, "bounds": {"title": "Поле оценки", "hint": "школьная шкала 2–5", "accepts_from": 1, "accepts_to": 5, "saved": "оценка сохранена", "rejected": "система не приняла значение", "empty": "система не приняла пустое поле", "not_number": "система не приняла: нужно целое число"}}};
 const S = DATA.stand;
 if (DATA.title) document.getElementById('title').textContent = DATA.title;
 document.getElementById('sub').textContent = DATA.sub || '';
@@ -122,9 +122,9 @@ function screenJournal(sc) {
       <tbody>${rows}</tbody></table>
       <div class="row">
         <button class="btn" id="save"><span class="zone" data-zone="save_typo">${esc(sc.save_label)}</span></button>
-        <label class="note"><input type="checkbox" id="offline"> связь пропала</label>
+        <label class="note zone" data-zone="offline"><input type="checkbox" id="offline"> связь пропала</label>
       </div>
-      <div class="note zone" data-zone="offline" id="save-note">Поставь оценки, включи «связь пропала» и сохрани.</div>
+      <div class="note" id="save-note"></div>
     </div>
   </div>`;
 }
