@@ -98,7 +98,7 @@
 </div></dialog>
 
 <script>
-const DATA = {"title": "Запись в кружок — проверка занятости", "sub": "Школа разрешает записаться, пока занятость по анкете не превышает 6 часов в неделю. Вводи занятость ученика и смотри, пустит ли система.", "stand": {"mode": "bounds", "screens": [], "zones": {}, "bounds": {"title": "Проверка при записи", "hint": "занятость ученика по анкете, часов в неделю", "accepts_from": 0, "accepts_to": 5, "saved": "запись прошла", "rejected": "система отказала: превышен лимит", "empty": "система не приняла пустое поле", "not_number": "система не приняла: нужно целое число часов"}}};
+const DATA = {"title": "Дневник V2 на телефоне", "sub": "Тот же журнал, ширина экрана телефона.", "narrow": true, "stand": {"mode": "hunt", "screens": [{"id": "journal", "type": "journal", "tab": "Журнал учителя", "title": "Журнал · 10А · Математика", "date": "12 сентября", "save_label": "Сохранить", "rows": [{"code": "S90001", "grade": 4, "homework": 92}, {"code": "S90002", "grade": 5, "homework": 88}, {"code": "S90003", "grade": 3, "homework": null}, {"code": "S90004", "grade": 4, "homework": 75}, {"code": "S90005", "grade": 5, "homework": 96}, {"code": "S90006", "grade": 4, "homework": 60}, {"code": "S90007", "grade": 3, "homework": 84}, {"code": "S90008", "grade": 5, "homework": 70}], "values": [2, 3, 4, 5]}], "zones": {}, "save_ok": "Сохранено.", "save_offline": "Сохранено."}};
 const S = DATA.stand;
 if (DATA.title) document.getElementById('title').textContent = DATA.title;
 document.getElementById('sub').textContent = DATA.sub || '';

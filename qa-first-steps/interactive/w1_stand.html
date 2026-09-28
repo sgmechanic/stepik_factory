@@ -39,7 +39,8 @@
   .btn { font: inherit; padding: 7px 14px; border-radius: 8px; border: 1px solid var(--s1);
          background: var(--s1); color: #fff; cursor: pointer; }
   .btn.ghost { background: #fff; color: var(--ink2); border-color: var(--axis); }
-  .row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 10px; }
+  .btn.small { padding: 3px 10px; font-size: 13px; }
+  select.pick { font: inherit; padding: 3px 6px; border: 1px solid var(--axis); border-radius: 6px; }  .row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 10px; }
   .note { color: var(--ink2); font-size: 13px; }
   .kv { display: flex; justify-content: space-between; gap: 10px; padding: 5px 0;
         border-bottom: 1px solid var(--grid); }
@@ -97,26 +98,45 @@
 </div></dialog>
 
 <script>
-const DATA = {"title": "Дневник V2 — сборка 1", "sub": "Журнал учителя. Отмечай всё, что расходится с ТЗ.", "stand": {"mode": "hunt", "screens": [{"id": "journal", "type": "journal", "tab": "Журнал учителя", "title": "Журнал · 10А · Математика", "date": "12 сентября", "save_label": "Сохранить", "rows": [{"code": "S90001", "grade": 4, "homework": 92}, {"code": "S90002", "grade": 5, "homework": 88}, {"code": "S90003", "grade": 3, "homework": null}, {"code": "S90004", "grade": 4, "homework": 75}, {"code": "S90005", "grade": 5, "homework": 96}, {"code": "S90006", "grade": 4, "homework": 60}, {"code": "S90007", "grade": 3, "homework": 84}, {"code": "S90008", "grade": 5, "homework": 70}]}], "zones": {"hw_empty": {"question": "Что скажешь про колонку домашних заданий?", "options": [{"text": "У ученика без отметки стоит 0 % — как будто он ничего не сделал"}, {"text": "Проценты неудобны"}, {"text": "Выглядит нормально"}]}, "save_typo": {"question": "Что скажешь про кнопку?", "options": [{"text": "Не видно, сохранились оценки или нет"}, {"text": "Кнопка слишком маленькая"}, {"text": "Выглядит нормально"}]}, "offline": {"question": "Что скажешь про сохранение?", "options": [{"text": "После сохранения введённые оценки пропали"}, {"text": "Сохранение идёт слишком долго"}, {"text": "Выглядит нормально"}]}}, "save_ok": "Сохранено.", "save_offline": "Сохранено."}};
+const DATA = {"title": "Дневник V2 — сборка 1", "sub": "Журнал учителя. Отмечай всё, что расходится с ТЗ.", "stand": {"mode": "hunt", "screens": [{"id": "journal", "type": "journal", "tab": "Журнал учителя", "title": "Журнал · 10А · Математика", "date": "12 сентября", "save_label": "Сохранить", "rows": [{"code": "S90001", "grade": 4, "homework": 92}, {"code": "S90002", "grade": 5, "homework": 88}, {"code": "S90003", "grade": 3, "homework": null}, {"code": "S90004", "grade": 4, "homework": 75}, {"code": "S90005", "grade": 5, "homework": 96}, {"code": "S90006", "grade": 4, "homework": 60}, {"code": "S90007", "grade": 3, "homework": 84}, {"code": "S90008", "grade": 5, "homework": 70}], "values": [2, 3, 4, 5]}], "zones": {"hw_empty": {"question": "Что скажешь про колонку домашних заданий?", "options": [{"text": "У ученика без отметки стоит 0 % — как будто он ничего не сделал"}, {"text": "Проценты неудобны"}, {"text": "Выглядит нормально"}]}, "save_typo": {"question": "Что скажешь про ввод оценки?", "options": [{"text": "Выглядит нормально"}, {"text": "На каждую оценку уходит три действия"}, {"text": "Кнопка «Готово» слишком маленькая"}]}, "class_title": {"question": "Что скажешь про заголовок журнала?", "options": [{"text": "Всё верно: класс и предмет те же, что в задании"}, {"text": "Не хватает даты урока"}, {"text": "Название предмета написано сокращённо"}]}, "offline": {"question": "Что скажешь про сохранение?", "options": [{"text": "После сохранения введённые оценки пропали"}, {"text": "Сохранение идёт слишком долго"}, {"text": "Выглядит нормально"}]}}, "save_ok": "Сохранено.", "save_offline": "Сохранено."}};
 const S = DATA.stand;
 if (DATA.title) document.getElementById('title').textContent = DATA.title;
 document.getElementById('sub').textContent = DATA.sub || '';
+if (DATA.narrow) {   // узкий экран телефона: таблица шире контейнера, и часть колонок уезжает
+  const w = document.querySelector('.wrap');
+  w.style.maxWidth = '320px';
+  w.style.overflowX = 'hidden';
+  // Вёрстка подрядчика не сжимает журнал: у таблицы своя минимальная ширина, и край экрана её режет.
+  const css = document.createElement('style');
+  css.textContent = '.app table { min-width: 430px; } .app .body { overflow: hidden; }';
+  document.head.appendChild(css);
+}
 
 const esc = s => { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; };
 const found = [];                                  // {zone, label, note}
+let editing = null;                                // какая клетка журнала открыта на ввод
+let saveNote = '';                                 // сообщение после сохранения переживает перерисовку
 let current = (S.screens[0] || {}).id, marking = false;   // в режиме «границы» экранов нет
 
 /* ---------- экраны: верстка «как настоящее приложение», данные — из сборки ---------- */
 function screenJournal(sc) {
+  // Ввод оценки стоит трёх действий: открыть клетку, выбрать значение, нажать «Готово».
+  // Так же он описан в ТЗ-разборе урока, и на этом держится расчёт «успеет ли учитель за перемену».
+  const cell = (r, i) => editing === i
+    ? `<select class="pick" data-i="${i}">${[''].concat(sc.values).map(v =>
+          `<option value="${esc(String(v))}"${String(r.grade ?? '') === String(v) ? ' selected' : ''}>${
+            v === '' ? '—' : esc(String(v))}</option>`).join('')}</select>
+       <button class="btn small" data-done="${i}">Готово</button>`
+    : `<button class="btn ghost small" data-open="${i}">${r.grade == null ? '—' : esc(String(r.grade))}</button>`;
   const rows = sc.rows.map((r, i) => `
     <tr>
       <td>${esc(r.code)}</td>
-      <td><input class="grade" data-i="${i}" value="${r.grade ?? ''}" inputmode="numeric"></td>
+      <td>${cell(r, i)}</td>
       <td class="num">${r.homework === null ? '<span class="zone" data-zone="hw_empty">0 %</span>'
                                             : esc(r.homework + ' %')}</td>
     </tr>`).join('');
   return `<div class="app">
-    <div class="top"><span>${esc(sc.title)}</span><small>${esc(sc.date)}</small></div>
+    <div class="top"><span class="zone" data-zone="class_title">${esc(sc.title)}</span><small>${esc(sc.date)}</small></div>
     <div class="body">
       <table><thead><tr><th>Ученик</th><th>Оценка</th><th>Домашние задания</th></tr></thead>
       <tbody>${rows}</tbody></table>
@@ -124,7 +144,7 @@ function screenJournal(sc) {
         <button class="btn" id="save"><span class="zone" data-zone="save_typo">${esc(sc.save_label)}</span></button>
         <label class="note zone" data-zone="offline"><input type="checkbox" id="offline"> связь пропала</label>
       </div>
-      <div class="note" id="save-note"></div>
+      <div class="note" id="save-note">${esc(saveNote)}</div>
     </div>
   </div>`;
 }
@@ -246,13 +266,26 @@ function render() {
     if (found.some(f => f.zone === z.dataset.zone)) z.classList.add('found');
     z.onclick = e => { if (marking) { e.preventDefault(); e.stopPropagation(); openDialog(z.dataset.zone); } };
   });
+  host.querySelectorAll('[data-open]').forEach(b => b.onclick = () => {
+    if (marking) return;
+    editing = +b.dataset.open;
+    render();
+  });
+  host.querySelectorAll('[data-done]').forEach(b => b.onclick = () => {
+    const i = +b.dataset.done;
+    const picked = host.querySelector(`select.pick[data-i="${i}"]`).value;
+    sc.rows[i].grade = picked === '' ? null : +picked;
+    editing = null;
+    render();
+  });
   const save = document.getElementById('save');
   if (save) save.onclick = () => {
     if (marking) return;
     const offline = document.getElementById('offline').checked;
     // Заложенный дефект: при пропавшей связи введённое молча теряется.
-    document.getElementById('save-note').textContent = offline ? S.save_offline : S.save_ok;
-    if (offline) host.querySelectorAll('input.grade').forEach(i => i.value = '');
+    saveNote = offline ? S.save_offline : S.save_ok;
+    if (offline) sc.rows.forEach(r => r.grade = null);
+    render();
   };
   renderFound();
 }
