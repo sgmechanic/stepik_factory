@@ -1,0 +1,170 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>V2 API — песочница</title>
+<style>
+  :root {
+    color-scheme: light;
+    --surface: #fcfcfb; --ink: #0b0b0b; --ink2: #52514e; --muted: #898781;
+    --grid: #e1e0d9; --axis: #c3c2b7; --s1: #2a78d6; --s2: #eb6834; --good: #006300; --bad: #b5271b;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--surface); color: var(--ink);
+         font: 15px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif; }
+  .wrap { max-width: 860px; margin: 0 auto; padding: 16px; }
+  h1 { font-size: 18px; margin: 0 0 4px; font-weight: 600; }
+  .sub { color: var(--ink2); margin: 0 0 14px; }
+
+  .card { border: 1px solid var(--grid); border-radius: 12px; background: #fff; padding: 12px 14px;
+          margin-bottom: 12px; }
+  .card h2 { font-size: 13px; margin: 0 0 10px; color: var(--muted); font-weight: 600;
+             text-transform: uppercase; letter-spacing: .06em; }
+  .row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 8px; }
+  label.f { font-size: 13px; color: var(--ink2); display: flex; align-items: center; gap: 6px; }
+  select, input.v { font: inherit; padding: 5px 8px; border: 1px solid var(--axis); border-radius: 7px;
+                    background: #fff; color: var(--ink); }
+  input.v { width: 92px; }
+  .btn { font: inherit; padding: 7px 14px; border-radius: 8px; border: 1px solid var(--s1);
+         background: var(--s1); color: #fff; cursor: pointer; }
+  .btn.ghost { background: #fff; color: var(--ink2); border-color: var(--axis); }
+
+  pre { margin: 0; padding: 10px 12px; border-radius: 9px; background: #14130f; color: #e6e4dc;
+        font: 13px/1.5 Consolas, "SF Mono", monospace; overflow-x: auto; }
+  .status { display: inline-block; padding: 2px 10px; border-radius: 999px; font-weight: 600;
+            font-size: 13px; margin-bottom: 8px; }
+  .s200 { background: #e7f3ea; color: var(--good); }
+  .s400 { background: #fdeceb; color: var(--bad); }
+  table { border-collapse: collapse; width: 100%; font-size: 14px; }
+  th, td { text-align: left; padding: 5px 8px; border-bottom: 1px solid var(--grid); }
+  th { color: var(--muted); font-weight: 600; font-size: 12px; }
+  .none { color: var(--muted); }
+  .log { font-size: 13px; color: var(--ink2); margin-top: 8px; }
+  .log div { padding: 3px 0; border-bottom: 1px solid var(--grid); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1 id="title">V2 API — песочница</h1>
+  <p class="sub" id="sub"></p>
+
+  <div class="card">
+    <h2>Запрос</h2>
+    <div class="row">
+      <label class="f">я вхожу как
+        <select id="role"></select>
+      </label>
+    </div>
+    <div class="row">
+      <select id="method"></select>
+      <select id="path"></select>
+    </div>
+    <div class="row" id="params"></div>
+    <div class="row">
+      <button class="btn" id="send">Отправить запрос</button>
+      <button class="btn ghost" id="reset">Очистить журнал</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Ответ</h2>
+    <div id="response"><span class="none">Запроса ещё не было</span></div>
+  </div>
+
+  <div class="card">
+    <h2>Что сейчас в журнале</h2>
+    <div id="journal"></div>
+  </div>
+</div>
+
+<script>
+const DATA = {"title": "V2 API — песочница", "sub": "Тот же дневник без экрана: собери запрос и посмотри, что ответит сервер.", "api": {"me": "S90001", "lesson": "12 сентября", "roles": [{"id": "teacher", "name": "учитель"}, {"id": "student", "name": "ученик S90001"}], "methods": ["GET", "POST"], "paths": [{"path": "/grades", "fields": {"GET": [{"name": "student", "label": "ученик", "type": "select", "options": ["S90001", "S90002", "S90003"]}], "POST": [{"name": "student", "label": "ученик", "type": "select", "options": ["S90001", "S90002", "S90003"]}, {"name": "value", "label": "оценка", "type": "text", "value": "4"}]}}], "journal": [{"student": "S90001", "value": 4, "lesson": "12 сентября"}, {"student": "S90002", "value": 5, "lesson": "12 сентября"}], "rules": {"grade_min": 2, "grade_max": 5, "accepts_from": 1, "checks_owner": false, "idempotent": false}}};
+const A = DATA.api;
+if (DATA.title) document.getElementById('title').textContent = DATA.title;
+document.getElementById('sub').textContent = DATA.sub || '';
+
+const esc = s => { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; };
+let saved = A.journal.map(r => ({...r}));          // то, что «лежит на сервере»
+const history = [];
+
+function fill(sel, items, labelOf) {
+  sel.innerHTML = items.map(i => `<option value="${esc(i.id ?? i)}">${esc(labelOf(i))}</option>`).join('');
+}
+fill(document.getElementById('role'), A.roles, r => r.name);
+fill(document.getElementById('method'), A.methods, m => m);
+fill(document.getElementById('path'), A.paths.map(p => ({id: p.path, path: p.path})), p => p.path);
+
+function renderParams() {
+  const path = A.paths.find(p => p.path === document.getElementById('path').value);
+  const method = document.getElementById('method').value;
+  const fields = (path.fields || {})[method] || [];
+  document.getElementById('params').innerHTML = fields.map(f =>
+    f.type === 'select'
+      ? `<label class="f">${esc(f.label)} <select data-p="${esc(f.name)}">${
+          f.options.map(o => `<option value="${esc(o)}">${esc(o)}</option>`).join('')}</select></label>`
+      : `<label class="f">${esc(f.label)} <input class="v" data-p="${esc(f.name)}" value="${esc(f.value ?? '')}"></label>`
+  ).join('') || '<span class="none">параметров нет</span>';
+}
+
+/* Правила сервера. Заложенные дефекты живут здесь и задаются данными сборки:
+   accepts_from — с какой оценки сервер принимает значение (в школе шкала начинается с grade_min);
+   checks_owner — проверяет ли сервер, что ученик смотрит свои оценки;
+   idempotent   — защищён ли повтор одной и той же отправки. */
+function handle(role, method, path, params) {
+  const student = params.student, value = (params.value ?? '').trim();
+  if (path === '/grades' && method === 'GET') {
+    if (role === 'student' && student !== A.me && A.rules.checks_owner) {
+      return {status: 403, body: {error: "нет доступа к чужим оценкам"}};
+    }
+    return {status: 200, body: {student, grades: saved.filter(r => r.student === student).map(r => r.value)}};
+  }
+  if (path === '/grades' && method === 'POST') {
+    if (role === 'student') return {status: 403, body: {error: "ученик не может выставлять оценки"}};
+    if (!/^-?\d+$/.test(value)) return {status: 400, body: {error: "оценка должна быть числом"}};
+    const n = +value;
+    if (n < A.rules.accepts_from || n > A.rules.grade_max) {
+      return {status: 400, body: {error: `оценка вне шкалы ${A.rules.grade_min}–${A.rules.grade_max}`}};
+    }
+    const same = saved.find(r => r.student === student && r.value === n && r.lesson === A.lesson);
+    if (same && A.rules.idempotent) {
+      return {status: 200, body: {saved: false, reason: "такая оценка за этот урок уже есть"}};
+    }
+    saved.push({student, value: n, lesson: A.lesson});
+    return {status: 201, body: {saved: true, student, value: n, lesson: A.lesson}};
+  }
+  return {status: 404, body: {error: "адрес не найден"}};
+}
+
+function send() {
+  const role = document.getElementById('role').value;
+  const method = document.getElementById('method').value;
+  const path = document.getElementById('path').value;
+  const params = {};
+  document.querySelectorAll('[data-p]').forEach(el => params[el.dataset.p] = el.value);
+  const res = handle(role, method, path, params);
+  history.unshift(`${method} ${path} · ${JSON.stringify(params)} → ${res.status}`);
+  document.getElementById('response').innerHTML =
+    `<span class="status ${res.status < 300 ? 's200' : 's400'}">${res.status}</span>
+     <pre>${esc(JSON.stringify(res.body, null, 2))}</pre>
+     <div class="log">${history.slice(0, 6).map(h => `<div>${esc(h)}</div>`).join('')}</div>`;
+  renderJournal();
+}
+
+function renderJournal() {
+  const rows = saved.map(r => `<tr><td>${esc(r.student)}</td><td>${esc(String(r.value))}</td>
+      <td>${esc(r.lesson)}</td></tr>`).join('');
+  document.getElementById('journal').innerHTML = saved.length
+    ? `<table><thead><tr><th>Ученик</th><th>Оценка</th><th>Урок</th></tr></thead><tbody>${rows}</tbody></table>`
+    : '<span class="none">пусто</span>';
+}
+
+document.getElementById('path').onchange = renderParams;
+document.getElementById('method').onchange = renderParams;
+document.getElementById('send').onclick = send;
+document.getElementById('reset').onclick = () => { saved = A.journal.map(r => ({...r})); renderJournal(); };
+renderParams();
+renderJournal();
+</script>
+</body>
+</html>

@@ -1,0 +1,261 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Дневник V2 — тестовый стенд</title>
+<style>
+  :root {
+    color-scheme: light;
+    --surface: #fcfcfb; --ink: #0b0b0b; --ink2: #52514e; --muted: #898781;
+    --grid: #e1e0d9; --axis: #c3c2b7; --s1: #2a78d6; --s2: #eb6834; --good: #006300;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--surface); color: var(--ink);
+         font: 15px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif; }
+  .wrap { max-width: 860px; margin: 0 auto; padding: 16px; }
+  h1 { font-size: 18px; margin: 0 0 4px; font-weight: 600; }
+  .sub { color: var(--ink2); margin: 0 0 14px; }
+
+  .bar { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-bottom: 12px; }
+  .tab { font: inherit; font-size: 13px; padding: 6px 11px; border-radius: 999px;
+         border: 1px solid var(--axis); background: #fff; color: var(--ink2); cursor: pointer; }
+  .tab[aria-pressed="true"] { background: var(--s1); border-color: var(--s1); color: #fff; }
+  .mark { margin-left: auto; font: inherit; font-size: 13px; padding: 6px 12px; border-radius: 8px;
+          border: 1px solid var(--s2); background: #fff; color: var(--s2); cursor: pointer; }
+  .mark[aria-pressed="true"] { background: var(--s2); color: #fff; }
+
+  .app { border: 1px solid var(--grid); border-radius: 12px; background: #fff; overflow: hidden; }
+  .app .top { padding: 9px 14px; border-bottom: 1px solid var(--grid); background: #f7f6f1;
+              font-weight: 600; display: flex; justify-content: space-between; gap: 8px; }
+  .app .top small { font-weight: 400; color: var(--muted); }
+  .app .body { padding: 12px 14px; }
+  table { border-collapse: collapse; width: 100%; font-size: 14px; }
+  th, td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--grid); }
+  th { color: var(--muted); font-weight: 600; font-size: 12px; }
+  td.num { text-align: right; font-variant-numeric: tabular-nums; }
+  input.grade { width: 54px; font: inherit; padding: 4px 6px; border: 1px solid var(--axis);
+                border-radius: 6px; text-align: center; }
+  .btn { font: inherit; padding: 7px 14px; border-radius: 8px; border: 1px solid var(--s1);
+         background: var(--s1); color: #fff; cursor: pointer; }
+  .btn.ghost { background: #fff; color: var(--ink2); border-color: var(--axis); }
+  .row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 10px; }
+  .note { color: var(--ink2); font-size: 13px; }
+  .kv { display: flex; justify-content: space-between; gap: 10px; padding: 5px 0;
+        border-bottom: 1px solid var(--grid); }
+  .kv b { font-weight: 600; }
+  .badge { display: inline-block; padding: 2px 8px; border-radius: 999px; background: #eef3fb;
+           color: var(--s1); font-size: 12px; }
+  .rank { margin-top: 10px; padding: 10px 12px; border-radius: 10px; background: #f3f2ec; }
+  .rank b { font-size: 18px; }
+
+  /* режим разметки: зоны подсвечиваются и становятся кликабельными */
+  .zone { position: relative; }
+  body.marking .zone { outline: 2px dashed var(--s2); outline-offset: 2px; cursor: pointer;
+                       border-radius: 6px; }
+  body.marking .zone:hover { background: #fff5ef; }
+  .zone.found::after { content: "отмечено"; position: absolute; top: -10px; right: 4px;
+                       background: var(--s2); color: #fff; font-size: 11px; padding: 1px 6px;
+                       border-radius: 999px; }
+
+  dialog { border: none; border-radius: 12px; padding: 0; max-width: 420px; width: calc(100% - 32px);
+           box-shadow: 0 18px 40px rgba(0,0,0,.18); }
+  dialog::backdrop { background: rgba(0,0,0,.35); }
+  .dlg { padding: 14px 16px; }
+  .dlg h2 { font-size: 15px; margin: 0 0 10px; }
+  .opts { display: grid; gap: 7px; }
+  .opts button { font: inherit; text-align: left; padding: 9px 11px; border-radius: 9px;
+                 border: 1px solid var(--axis); background: #fff; color: var(--ink); cursor: pointer; }
+  .opts button:hover { border-color: var(--s2); }
+
+  .found-list { margin-top: 16px; border-top: 1px solid var(--grid); padding-top: 12px; }
+  .found-list h2 { font-size: 14px; margin: 0 0 8px; color: var(--ink2); font-weight: 600; }
+  .found-list li { margin-bottom: 4px; }
+  .none { color: var(--muted); }
+  .log { margin-top: 12px; font-size: 13.5px; }
+  .log div { padding: 4px 0; border-bottom: 1px solid var(--grid); }
+  .log .ok { color: var(--good); }
+  .log .no { color: #b5271b; }
+  .fade { animation: fade .22s ease-out; }
+  @keyframes fade { from { opacity: 0; transform: translateY(3px); } to { opacity: 1; transform: none; } }
+  @media (prefers-reduced-motion: reduce) { .fade { animation: none; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1 id="title">Дневник V2 — тестовый стенд</h1>
+  <p class="sub" id="sub"></p>
+
+  <div class="bar" id="bar"></div>
+  <div id="screen"></div>
+  <div id="extra"></div>
+</div>
+
+<dialog id="dlg"><div class="dlg">
+  <h2 id="dlg-q">Что здесь не так?</h2>
+  <div class="opts" id="dlg-opts"></div>
+</div></dialog>
+
+<script>
+const DATA = {"title": "Поле срока сдачи", "sub": "Урок прошёл 12 сентября, учебный год заканчивается 31 мая. Проверяй даты.", "stand": {"mode": "bounds", "screens": [], "zones": {}, "bounds": {"title": "Срок сдачи домашнего задания", "hint": "число дней от урока: 0 — в день урока, 7 — через неделю, −1 — вчера", "accepts_from": -400, "accepts_to": 261, "saved": "срок сохранён", "rejected": "система не приняла дату", "empty": "система не приняла пустое поле", "not_number": "система не приняла: нужно целое число дней"}}};
+const S = DATA.stand;
+if (DATA.title) document.getElementById('title').textContent = DATA.title;
+document.getElementById('sub').textContent = DATA.sub || '';
+
+const esc = s => { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; };
+const found = [];                                  // {zone, label, note}
+let current = (S.screens[0] || {}).id, marking = false;   // в режиме «границы» экранов нет
+
+/* ---------- экраны: верстка «как настоящее приложение», данные — из сборки ---------- */
+function screenJournal(sc) {
+  const rows = sc.rows.map((r, i) => `
+    <tr>
+      <td>${esc(r.code)}</td>
+      <td><input class="grade" data-i="${i}" value="${r.grade ?? ''}" inputmode="numeric"></td>
+      <td class="num">${r.homework === null ? '<span class="zone" data-zone="hw_empty">0 %</span>'
+                                            : esc(r.homework + ' %')}</td>
+    </tr>`).join('');
+  return `<div class="app">
+    <div class="top"><span>${esc(sc.title)}</span><small>${esc(sc.date)}</small></div>
+    <div class="body">
+      <table><thead><tr><th>Ученик</th><th>Оценка</th><th>Домашние задания</th></tr></thead>
+      <tbody>${rows}</tbody></table>
+      <div class="row">
+        <button class="btn" id="save"><span class="zone" data-zone="save_typo">${esc(sc.save_label)}</span></button>
+        <label class="note zone" data-zone="offline"><input type="checkbox" id="offline"> связь пропала</label>
+      </div>
+      <div class="note" id="save-note"></div>
+    </div>
+  </div>`;
+}
+
+function screenStudent(sc) {
+  const marks = sc.marks.map(m => `<div class="kv"><span>${esc(m.subject)}</span>
+      <b>${m.grade === null ? '—' : esc(String(m.grade))}</b></div>`).join('');
+  return `<div class="app">
+    <div class="top"><span>${esc(sc.title)}</span><small>${esc(sc.who)}</small></div>
+    <div class="body">
+      ${marks}
+      <div class="kv"><span>Средний балл <span class="zone" data-zone="avg_all">по всем предметам</span></span>
+        <b>${esc(sc.avg)}</b></div>
+      <div class="kv"><span>Домашние задания</span>
+        <b><span class="zone" data-zone="hw_zero">${esc(sc.homework)}</span></b></div>
+      <div class="kv zone" data-zone="notify"><span>${esc(sc.notify_label)}</span>
+        <b>${esc(sc.notify)}</b></div>
+      <div class="rank zone" data-zone="rank">Твоё место в классе: <b>${esc(sc.rank)}</b>
+        из ${esc(String(sc.class_size))} — <span class="badge">по среднему баллу</span></div>
+    </div>
+  </div>`;
+}
+
+function screenReport(sc) {
+  const rows = sc.rows.map(r => `<tr><td>${esc(r[0])}</td><td class="num">${esc(r[1])}</td></tr>`).join('');
+  return `<div class="app">
+    <div class="top"><span>${esc(sc.title)}</span><small>${esc(sc.period)}</small></div>
+    <div class="body"><table><tbody>${rows}</tbody></table>
+      <p class="note">${esc(sc.note)}</p></div>
+  </div>`;
+}
+
+const RENDER = {journal: screenJournal, student: screenStudent, report: screenReport};
+
+/* ---------- режим «охота»: отметить зону и сказать, что не так ---------- */
+function openDialog(zone) {
+  const z = S.zones[zone];
+  if (!z) return;
+  document.getElementById('dlg-q').textContent = z.question || 'Что здесь не так?';
+  document.getElementById('dlg-opts').innerHTML = z.options
+    .map((o, i) => `<button data-i="${i}">${esc(o.text)}</button>`).join('');
+  const dlg = document.getElementById('dlg');
+  dlg.querySelectorAll('button').forEach(b => b.onclick = () => {
+    const opt = z.options[+b.dataset.i];
+    if (!found.some(f => f.zone === zone && f.label === opt.text)) {
+      found.push({zone, label: opt.text, note: opt.note || ''});
+    }
+    dlg.close();
+    render();
+  });
+  dlg.showModal();
+}
+
+function renderFound() {
+  const el = document.getElementById('extra');
+  const list = found.length
+    ? '<ol>' + found.map(f => `<li>${esc(f.label)}${f.note ? ` — <span class="note">${esc(f.note)}</span>` : ''}</li>`).join('') + '</ol>'
+    : '<p class="none">Пока пусто. Нажми «Отметить находку» и ткни в то, что кажется неправильным.</p>';
+  el.innerHTML = `<div class="found-list"><h2>Твои находки: ${found.length}</h2>${list}</div>`;
+}
+
+/* ---------- режим «границы»: ввод значений и реакция системы ---------- */
+const tries = [];
+function checkValue(raw) {
+  const v = raw.trim();
+  const rules = S.bounds;
+  let ok, why;
+  if (v === '') { ok = false; why = rules.empty; }
+  else if (!/^-?\d+$/.test(v)) { ok = false; why = rules.not_number; }
+  else {
+    const n = +v;
+    ok = n >= rules.accepts_from && n <= rules.accepts_to;      // заложенная ошибка живёт здесь
+    why = ok ? rules.saved : rules.rejected;
+  }
+  tries.push({v: v === '' ? '(пусто)' : v, ok, why});
+  render();
+}
+
+function screenBounds() {
+  const rows = tries.map(t => `<div><span class="${t.ok ? 'ok' : 'no'}">${t.ok ? '✓' : '✕'}</span>
+      <b>${esc(t.v)}</b> — ${esc(t.why)}</div>`).join('');
+  return `<div class="app">
+    <div class="top"><span>${esc(S.bounds.title)}</span><small>${esc(S.bounds.hint)}</small></div>
+    <div class="body">
+      <div class="row">
+        <input class="grade" id="val" style="width:90px" placeholder="значение">
+        <button class="btn" id="try">Сохранить</button>
+      </div>
+      <div class="log">${rows || '<div class="none">Проверок пока нет</div>'}</div>
+    </div>
+  </div>`;
+}
+
+/* ---------- сборка страницы ---------- */
+function render() {
+  const bar = document.getElementById('bar');
+  if (S.mode === 'bounds') {
+    bar.innerHTML = '';
+    document.getElementById('screen').innerHTML = screenBounds();
+    document.getElementById('extra').innerHTML = '';
+    const go = () => checkValue(document.getElementById('val').value);
+    document.getElementById('try').onclick = go;
+    document.getElementById('val').onkeydown = e => { if (e.key === 'Enter') go(); };
+    return;
+  }
+  bar.innerHTML = S.screens.map(s =>
+    `<button class="tab" data-id="${s.id}" aria-pressed="${s.id === current}">${esc(s.tab)}</button>`).join('')
+    + `<button class="mark" id="markbtn" aria-pressed="${marking}">${marking ? 'Готово' : 'Отметить находку'}</button>`;
+  bar.querySelectorAll('.tab').forEach(b => b.onclick = () => { current = b.dataset.id; render(); });
+  document.getElementById('markbtn').onclick = () => { marking = !marking; render(); };
+  document.body.classList.toggle('marking', marking);
+
+  const sc = S.screens.find(s => s.id === current);
+  const host = document.getElementById('screen');
+  host.innerHTML = `<div class="fade">${RENDER[sc.type](sc)}</div>`;
+  host.querySelectorAll('.zone').forEach(z => {
+    if (found.some(f => f.zone === z.dataset.zone)) z.classList.add('found');
+    z.onclick = e => { if (marking) { e.preventDefault(); e.stopPropagation(); openDialog(z.dataset.zone); } };
+  });
+  const save = document.getElementById('save');
+  if (save) save.onclick = () => {
+    if (marking) return;
+    const offline = document.getElementById('offline').checked;
+    // Заложенный дефект: при пропавшей связи введённое молча теряется.
+    document.getElementById('save-note').textContent = offline ? S.save_offline : S.save_ok;
+    if (offline) host.querySelectorAll('input.grade').forEach(i => i.value = '');
+  };
+  renderFound();
+}
+
+render();
+</script>
+</body>
+</html>
