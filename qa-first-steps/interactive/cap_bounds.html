@@ -97,7 +97,7 @@
 </div></dialog>
 
 <script>
-const DATA = {"title": "Запись в кружок — поле занятости", "sub": "Школа разрешает записываться, пока суммарная занятость не больше шести часов в неделю. Вводи, сколько часов получится после записи.", "stand": {"mode": "bounds", "screens": [], "zones": {}, "bounds": {"title": "Проверка при записи", "hint": "часы в неделю после записи", "accepts_from": 0, "accepts_to": 5, "saved": "запись прошла", "rejected": "система отказала: превышен лимит", "empty": "система не приняла пустое поле", "not_number": "система не приняла: нужно целое число часов"}}};
+const DATA = {"title": "Запись в кружок — проверка занятости", "sub": "Школа разрешает записаться, пока занятость по анкете не превышает шести часов в неделю. Вводи занятость ученика и смотри, пустит ли система.", "stand": {"mode": "bounds", "screens": [], "zones": {}, "bounds": {"title": "Проверка при записи", "hint": "занятость ученика по анкете, часов в неделю", "accepts_from": 0, "accepts_to": 5, "saved": "запись прошла", "rejected": "система отказала: превышен лимит", "empty": "система не приняла пустое поле", "not_number": "система не приняла: нужно целое число часов"}}};
 const S = DATA.stand;
 if (DATA.title) document.getElementById('title').textContent = DATA.title;
 document.getElementById('sub').textContent = DATA.sub || '';
@@ -189,7 +189,9 @@ function renderFound() {
 /* ---------- режим «границы»: ввод значений и реакция системы ---------- */
 const tries = [];
 function checkValue(raw) {
-  const v = raw.trim();
+  // Типографский минус из текста урока — тот же минус, что с клавиатуры: иначе ученик,
+  // скопировавший «−1» из условия, получает «это не число» и делает обратный вывод.
+  const v = raw.trim().replace(/−/g, '-');
   const rules = S.bounds;
   let ok, why;
   if (v === '') { ok = false; why = rules.empty; }

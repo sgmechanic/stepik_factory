@@ -97,7 +97,7 @@
 </div></dialog>
 
 <script>
-const DATA = {"title": "Поле срока сдачи", "sub": "Урок прошёл 12 сентября, учебный год заканчивается 31 мая. Проверяй даты.", "stand": {"mode": "bounds", "screens": [], "zones": {}, "bounds": {"title": "Срок сдачи домашнего задания", "hint": "число дней от урока: 0 — в день урока, 7 — через неделю, −1 — вчера", "accepts_from": -400, "accepts_to": 261, "saved": "срок сохранён", "rejected": "система не приняла дату", "empty": "система не приняла пустое поле", "not_number": "система не приняла: нужно целое число дней"}}};
+const DATA = {"title": "Дневник V2 — сборка 3", "sub": "Прогони по ней чек-лист: что исправлено, а что вернулось.", "stand": {"mode": "bounds", "screens": [], "zones": {}, "bounds": {"title": "Поле оценки, сборка 3", "hint": "школьная шкала 2–5", "accepts_from": 1, "accepts_to": 5, "saved": "оценка сохранена", "rejected": "система не приняла значение", "empty": "система не приняла пустое поле", "not_number": "система не приняла: нужно целое число"}}};
 const S = DATA.stand;
 if (DATA.title) document.getElementById('title').textContent = DATA.title;
 document.getElementById('sub').textContent = DATA.sub || '';

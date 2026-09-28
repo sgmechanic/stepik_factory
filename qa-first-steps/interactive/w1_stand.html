@@ -189,7 +189,9 @@ function renderFound() {
 /* ---------- режим «границы»: ввод значений и реакция системы ---------- */
 const tries = [];
 function checkValue(raw) {
-  const v = raw.trim();
+  // Типографский минус из текста урока — тот же минус, что с клавиатуры: иначе ученик,
+  // скопировавший «−1» из условия, получает «это не число» и делает обратный вывод.
+  const v = raw.trim().replace(/−/g, '-');
   const rules = S.bounds;
   let ok, why;
   if (v === '') { ok = false; why = rules.empty; }
