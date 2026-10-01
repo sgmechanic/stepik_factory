@@ -98,7 +98,7 @@
 </div></dialog>
 
 <script>
-const DATA = {"title": "Запись в кружок — проверка занятости", "sub": "Школа разрешает записаться, пока занятость по анкете не превышает 6 часов в неделю. Вводи занятость ученика и смотри, пустит ли система.", "stand": {"mode": "bounds", "screens": [], "zones": {}, "bounds": {"title": "Проверка при записи", "hint": "занятость ученика по анкете, часов в неделю", "accepts_from": 0, "accepts_to": 5, "saved": "запись прошла", "rejected": "система отказала: превышен лимит", "empty": "система не приняла пустое поле", "not_number": "система не приняла: нужно целое число часов"}}};
+const DATA = {"title": "Запись в кружок — проверка занятости", "sub": "Школа разрешает записаться, пока занятость по анкете не превышает 6 часов в неделю. Вводи занятость ученика и смотри, пустит ли система.", "stand": {"mode": "bounds", "screens": [], "zones": {}, "bounds": {"title": "Проверка при записи", "hint": "занятость ученика по анкете, часов в неделю", "accepts_from": 0, "accepts_to": 5, "saved": "запись прошла", "rejected": "система отказала: занятость больше разрешённой", "empty": "система не приняла пустое поле", "not_number": "система не приняла: нужно целое число часов"}}};
 const S = DATA.stand;
 if (DATA.title) document.getElementById('title').textContent = DATA.title;
 document.getElementById('sub').textContent = DATA.sub || '';
@@ -206,7 +206,7 @@ function renderFound() {
   const el = document.getElementById('extra');
   const list = found.length
     ? '<ol>' + found.map(f => `<li>${esc(f.label)}${f.note ? ` — <span class="note">${esc(f.note)}</span>` : ''}</li>`).join('') + '</ol>'
-    : '<p class="none">Пока пусто. Нажми «Отметить находку» и ткни в то, что кажется неправильным.</p>';
+    : '<p class="none">Пока пусто. Нажми «Отметить находку», а потом — на то, что кажется неправильным.</p>';
   el.innerHTML = `<div class="found-list"><h2>Твои находки: ${found.length}</h2>${list}</div>`;
 }
 
@@ -233,8 +233,9 @@ function screenBounds() {
   const rows = tries.map(t => `<div><span class="${t.ok ? 'ok' : 'no'}">${t.ok ? '✓' : '✕'}</span>
       <b>${esc(t.v)}</b> — ${esc(t.why)}</div>`).join('');
   return `<div class="app">
-    <div class="top"><span>${esc(S.bounds.title)}</span><small>${esc(S.bounds.hint)}</small></div>
+    <div class="top"><span>${esc(S.bounds.title)}</span></div>
     <div class="body">
+      <p class="note">${esc(S.bounds.hint)}</p>
       <div class="row">
         <input class="grade" id="val" style="width:90px" placeholder="значение">
         <button class="btn" id="try">Сохранить</button>

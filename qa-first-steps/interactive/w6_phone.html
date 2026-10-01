@@ -206,7 +206,7 @@ function renderFound() {
   const el = document.getElementById('extra');
   const list = found.length
     ? '<ol>' + found.map(f => `<li>${esc(f.label)}${f.note ? ` — <span class="note">${esc(f.note)}</span>` : ''}</li>`).join('') + '</ol>'
-    : '<p class="none">Пока пусто. Нажми «Отметить находку» и ткни в то, что кажется неправильным.</p>';
+    : '<p class="none">Пока пусто. Нажми «Отметить находку», а потом — на то, что кажется неправильным.</p>';
   el.innerHTML = `<div class="found-list"><h2>Твои находки: ${found.length}</h2>${list}</div>`;
 }
 
@@ -233,8 +233,9 @@ function screenBounds() {
   const rows = tries.map(t => `<div><span class="${t.ok ? 'ok' : 'no'}">${t.ok ? '✓' : '✕'}</span>
       <b>${esc(t.v)}</b> — ${esc(t.why)}</div>`).join('');
   return `<div class="app">
-    <div class="top"><span>${esc(S.bounds.title)}</span><small>${esc(S.bounds.hint)}</small></div>
+    <div class="top"><span>${esc(S.bounds.title)}</span></div>
     <div class="body">
+      <p class="note">${esc(S.bounds.hint)}</p>
       <div class="row">
         <input class="grade" id="val" style="width:90px" placeholder="значение">
         <button class="btn" id="try">Сохранить</button>
