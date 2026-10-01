@@ -1,0 +1,236 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Кого мы считаем</title>
+<style>
+  :root {
+    color-scheme: light;
+    --surface: #fcfcfb; --ink: #0b0b0b; --ink2: #52514e; --muted: #898781;
+    --grid: #e1e0d9; --axis: #c3c2b7; --s1: #2a78d6; --s2: #eb6834; --good: #006300; --bad: #b5271b;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--surface); color: var(--ink);
+         font: 15px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif; }
+  .wrap { max-width: 860px; margin: 0 auto; padding: 16px; }
+  h1 { font-size: 18px; margin: 0 0 4px; font-weight: 600; letter-spacing: -0.01em; }
+  .sub { color: var(--ink2); margin: 0 0 14px; }
+  h2 { font-size: 15px; margin: 18px 0 6px; font-weight: 600; }
+
+  .bar { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-bottom: 10px; }
+  .bar .cap { font-size: 12px; color: var(--muted); margin-right: 2px; }
+  .tab { font: inherit; font-size: 13px; padding: 6px 11px; border-radius: 999px;
+         border: 1px solid var(--axis); background: #fff; color: var(--ink2); cursor: pointer; }
+  .tab[aria-pressed="true"] { background: var(--s1); border-color: var(--s1); color: #fff; }
+
+  .card { border: 1px solid var(--grid); border-radius: 12px; background: #fff; padding: 12px 14px; }
+  canvas { display: block; width: 100%; }
+  .legend { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 8px; font-size: 13px; color: var(--ink2); }
+  .legend i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 5px; }
+  .read { margin-top: 10px; font-size: 14px; color: var(--ink2); }
+  .read b { color: var(--ink); font-variant-numeric: tabular-nums; }
+
+  .slider { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-top: 8px; }
+  input[type=range] { flex: 1 1 220px; accent-color: var(--s2); }
+  .nums { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px;
+          margin-top: 10px; }
+  .num { border: 1px solid var(--grid); border-radius: 10px; padding: 9px 11px; background: #fff; }
+  .num .k { font-size: 12px; color: var(--muted); }
+  .num .v { font-size: 20px; font-weight: 600; font-variant-numeric: tabular-nums; letter-spacing: -0.01em; }
+  .num .d { font-size: 12.5px; }
+  .up { color: var(--good); } .down { color: var(--bad); } .flat { color: var(--muted); }
+  .note { margin-top: 10px; font-size: 13px; color: var(--ink2); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1 id="title">Кого мы считаем</h1>
+  <p class="sub" id="sub"></p>
+
+  <div id="block-bars">
+  <div class="bar" id="metrics"><span class="cap">считаем:</span></div>
+  <div class="card">
+    <canvas id="bars" height="150"></canvas>
+    <div class="read" id="read"></div>
+  </div>
+  </div>
+
+  <div id="block-hist">
+  <h2>Кто эти люди</h2>
+  <div class="bar" id="scopes"><span class="cap">входной уровень:</span></div>
+  <div class="card">
+    <canvas id="hist" height="170"></canvas>
+    <div class="legend">
+      <span><i style="background:#9fb9d8"></i>до кампании</span>
+      <span><i style="background:#eb6834"></i>после кампании</span>
+    </div>
+    <div class="read" id="readHist"></div>
+  </div>
+
+  </div>
+
+  <div id="block-gaming">
+  <h2>Отговорить слабейших</h2>
+  <div class="card">
+    <div class="slider">
+      <label for="cut">Не советуем профиль самым слабым по входному уровню:</label>
+      <input type="range" id="cut" min="0" max="1" step="1" value="0">
+      <output id="cutOut">0 человек</output>
+    </div>
+    <div class="nums" id="nums"></div>
+    <div class="note" id="gameNote"></div>
+  </div>
+  </div>
+</div>
+<script>
+const DATA = {"title": "Кто сдаёт профиль", "sub": "Входной уровень тех, кто идёт на профильный экзамен, и всего выпуска.", "data": {"periods": [{"id": "early", "label": "До кампании", "years": ["2021/22", "2022/23", "2023/24"]}, {"id": "late", "label": "После кампании", "years": ["2024/25", "2025/26"]}], "scopes": [{"id": "takers", "label": "Сдают профиль"}, {"id": "cohort", "label": "Весь выпуск"}], "good": 70, "entry_years": ["2022/23", "2023/24", "2024/25", "2025/26"], "takers": {"early": {"score": [48, 70, 71, 60, 73, 78, 87, 73, 62, 79, 46, 88, 42, 18, 63, 81, 81, 38, 56, 78, 56, 66, 53, 63, 88, 65, 83, 41, 87, 47, 40, 59, 65, 74, 77, 57, 55, 57, 44, 77, 46, 37, 61, 87, 61, 67, 81, 50, 25, 82, 35, 57, 45, 51, 51, 62, 37, 69, 64, 83, 75, 75, 57, 51, 38, 72, 24, 58, 67, 51, 49, 34, 64, 32, 76], "entry": [73.0, 97.0, 81.0, 70.0, 59.0, 79.0, 70.0, 81.0, 86.0, 90.0, 53.0, 73.0, 17.0, 64.0, 96.0, 66.0, 69.0, 9.0, 90.0, 90.0, 74.0, 90.0, 93.0, 31.0, 60.0, 86.0, 81.0, 27.0, 43.0, 33.0, 81.0, 79.0, 15.0, 77.0, 46.0, 90.0, 96.0, 59.0, 84.0, 81.0, 87.0, 29.0, 73.0, 89.0, 77.0, 96.0, 85.0, 95.0, 96.0, 84.0, 53.0, 67.0, 89.0, 83.0, 95.0, 77.0, 32.0, 70.0, 93.0, 95.0, 63.0, 79.0, 54.0, 58.0, 52.0, 83.0, 74.0, 62.0, 82.0, 39.0, 85.0, 51.0, 76.0, 60.0, 17.0]}, "late": {"score": [73, 69, 61, 79, 63, 71, 25, 67, 33, 58, 42, 75, 19, 85, 70, 86, 33, 82, 45, 31, 61, 45, 72, 52, 45, 43, 74, 79, 41, 54, 73, 33, 61, 63, 74, 92, 80, 89, 67, 69, 59, 32, 92, 33, 79, 73, 61, 44, 27, 62, 84, 72, 43, 71, 43, 52, 70, 76, 67, 79, 68, 51, 73, 77, 82, 78, 41, 35, 57, 55, 44, 55, 33, 60, 68, 86, 89, 57, 59, 70, 69, 71, 42, 55, 73, 64, 81, 63, 31, 73, 75, 27, 68, 58, 64, 78, 67, 58, 77, 59, 68, 52, 83, 74, 64, 43, 34, 86, 74, 68, 59, 64, 69, 51, 43, 82, 38, 67, 48, 54, 77, 69, 46, 37, 34, 34, 91, 68], "entry": [72.0, 90.0, 83.0, 76.0, 9.0, 72.0, 75.0, 91.0, 73.0, 93.0, 84.0, 76.0, 42.0, 93.0, 53.0, 78.0, 69.0, 77.0, 21.0, 81.0, 69.0, 11.0, 71.0, 93.0, 64.0, 74.0, 51.0, 46.0, 23.0, 83.0, 77.0, 62.0, 69.0, 51.0, 71.0, 86.0, 54.0, 86.0, 56.0, 30.0, 93.0, 79.0, 67.0, 90.0, 49.0, 89.0, 66.0, 70.0, 58.0, 76.0, 89.0, 91.0, 59.0, 36.0, 65.0, 30.0, 89.0, 90.0, 73.0, 75.0, 70.0, 57.0, 82.0, 56.0, 52.0, 74.0, 38.0, 55.0, 79.0, 75.0, 36.0, 77.0, 70.0, 78.0, 87.0, 63.0, 80.0, 69.0, 87.0, 72.0, 84.0, 73.0, 36.0, 67.0, 64.0, 73.0, 90.0, 93.0, 4.0, 49.0, 68.0, 22.0, 68.0, 93.0, 55.0, 85.0, 97.0, 49.0, 96.0, 48.0, 26.0, 83.0, 73.0, 86.0, 59.0, 37.0, 70.0, 48.0, 69.0, 55.0, 42.0, 72.0, 79.0, 92.0, 47.0, 78.0, 48.0, 68.0, 50.0, 47.0, 77.0, 23.0, 66.0, 84.0, 74.0, 43.0, 53.0, 57.0]}}, "cohort": {"early": {"score": [48, 70, 71, 60, 73, 78, 87, 73, 62, 79, 46, 88, 42, 18, 63, 81, 81, 38, 56, 78, 56, 66, 53, 63, 88, 65, 83, 41, 87, 47, 40, 59, 65, 74, 77, 57, 55, 57, 44, 77, 46, 37, 61, 87, 61, 67, 81, 50, 25, 82, 35, 57, 45, 51, 51, 62, 37, 69, 64, 83, 75, 75, 57, 51, 38, 72, 24, 58, 67, 51, 49, 34, 64, 32, 76], "entry": [74.0, 73.0, 97.0, 29.0, 81.0, 67.0, 45.0, 70.0, 59.0, 79.0, 70.0, 58.0, 81.0, 86.0, 90.0, 42.0, 45.0, 53.0, 73.0, 41.0, 68.0, 49.0, 17.0, 64.0, 96.0, 67.0, 49.0, 67.0, 66.0, 69.0, 9.0, 51.0, 90.0, 73.0, 88.0, 90.0, 97.0, 30.0, 72.0, 51.0, 79.0, 13.0, 74.0, 19.0, 90.0, 93.0, 61.0, 31.0, 46.0, 11.0, 61.0, 18.0, 82.0, 60.0, 58.0, 76.0, 91.0, 15.0, 10.0, 86.0, 27.0, 87.0, 42.0, 79.0, 27.0, 81.0, 22.0, 27.0, 43.0, 33.0, 81.0, 79.0, 15.0, 77.0, 75.0, 40.0, 46.0, 90.0, 96.0, 51.0, 77.0, 59.0, 21.0, 84.0, 81.0, 87.0, 80.0, 29.0, 69.0, 73.0, 89.0, 77.0, 96.0, 85.0, 95.0, 96.0, 82.0, 84.0, 88.0, 75.0, 58.0, 53.0, 18.0, 67.0, 55.0, 44.0, 73.0, 46.0, 89.0, 83.0, 22.0, 95.0, 65.0, 30.0, 77.0, 81.0, 41.0, 32.0, 70.0, 57.0, 93.0, 95.0, 51.0, 63.0, 29.0, 79.0, 54.0, 61.0, 58.0, 23.0, 83.0, 93.0, 52.0, 16.0, 52.0, 83.0, 74.0, 62.0, 30.0, 82.0, 32.0, 39.0, 58.0, 52.0, 85.0, 51.0, 76.0, 60.0, 39.0, 42.0, 17.0, 1.0, 81.0]}, "late": {"score": [73, 69, 61, 79, 63, 71, 25, 67, 33, 58, 42, 75, 19, 85, 70, 86, 33, 82, 45, 31, 61, 45, 72, 52, 45, 43, 74, 79, 41, 54, 73, 33, 61, 63, 74, 92, 80, 89, 67, 69, 59, 32, 92, 33, 79, 73, 61, 44, 27, 62, 84, 72, 43, 71, 43, 52, 70, 76, 67, 79, 68, 51, 73, 77, 82, 78, 41, 35, 57, 55, 44, 55, 33, 60, 68, 86, 89, 57, 59, 70, 69, 71, 42, 55, 73, 64, 81, 63, 31, 73, 75, 27, 68, 58, 64, 78, 67, 58, 77, 59, 68, 52, 83, 74, 64, 43, 34, 86, 74, 68, 59, 64, 69, 51, 43, 82, 38, 67, 48, 54, 77, 69, 46, 37, 34, 34, 91, 68], "entry": [23.0, 72.0, 90.0, 83.0, 76.0, 9.0, 72.0, 75.0, 91.0, 73.0, 93.0, 46.0, 84.0, 76.0, 42.0, 93.0, 21.0, 53.0, 78.0, 69.0, 77.0, 21.0, 81.0, 69.0, 11.0, 33.0, 71.0, 93.0, 64.0, 58.0, 31.0, 74.0, 51.0, 46.0, 23.0, 83.0, 77.0, 62.0, 69.0, 51.0, 71.0, 86.0, 54.0, 86.0, 56.0, 56.0, 30.0, 93.0, 79.0, 67.0, 90.0, 49.0, 89.0, 66.0, 70.0, 58.0, 76.0, 89.0, 57.0, 91.0, 59.0, 36.0, 65.0, 30.0, 89.0, 90.0, 73.0, 75.0, 70.0, 57.0, 82.0, 56.0, 52.0, 83.0, 74.0, 38.0, 55.0, 79.0, 75.0, 36.0, 77.0, 70.0, 78.0, 87.0, 63.0, 80.0, 69.0, 6.0, 87.0, 72.0, 84.0, 73.0, 36.0, 67.0, 64.0, 73.0, 90.0, 93.0, 4.0, 49.0, 67.0, 11.0, 68.0, 22.0, 68.0, 93.0, 55.0, 85.0, 97.0, 49.0, 96.0, 48.0, 26.0, 83.0, 73.0, 86.0, 51.0, 59.0, 37.0, 70.0, 42.0, 48.0, 69.0, 55.0, 42.0, 78.0, 72.0, 79.0, 92.0, 47.0, 78.0, 48.0, 70.0, 42.0, 68.0, 50.0, 47.0, 77.0, 23.0, 66.0, 84.0, 74.0, 43.0, 53.0, 17.0, 57.0]}}}};
+const D = DATA.data;
+// Экраны разные: на одном нет блока метрик, на другом — блока состава. Инициализация не
+// должна падать на отсутствующем ключе, иначе страница останется без скриптов целиком.
+let metric = ((D.metrics || [])[0] || {}).id, scope = ((D.scopes || [])[0] || {}).id || 'takers';
+
+const esc = s => String(s).replace(/[&<>]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
+const ru = (x, d = 1) => x.toFixed(d).replace('.', ',').replace('-', '−');
+const mean = a => a.reduce((s, v) => s + v, 0) / a.length;
+document.getElementById('title').textContent = DATA.title;
+document.getElementById('sub').textContent = DATA.sub;
+
+// Значения метрик приходят из сборки: это средние за выпуск по всем годам периода — те же числа,
+// что стоят в тексте урока. Пересчитывать их здесь по массиву нельзя: в нём только те выпуски,
+// у которых известен входной уровень.
+const valueOf = (period, id) => D.values[period][id];
+const fmt = (id, v) => id === 'top' ? ru(v) : (id === 'avg' ? ru(v) : String(Math.round(v)));
+
+function ctxOf(canvas) {
+  const dpr = window.devicePixelRatio || 1;
+  const w = canvas.clientWidth || canvas.parentNode.clientWidth;
+  canvas.width = Math.round(w * dpr);
+  canvas.height = Math.round(canvas.clientHeight * dpr);
+  const c = canvas.getContext('2d');
+  c.setTransform(dpr, 0, 0, dpr, 0, 0);
+  c.clearRect(0, 0, w, canvas.clientHeight);
+  c.font = '12px system-ui, sans-serif';
+  return { c, w, h: canvas.clientHeight };
+}
+
+function drawBars() {
+  const { c, w, h } = ctxOf(document.getElementById('bars'));
+  const vals = D.periods.map(p => ({ label: p.label, v: valueOf(p.id, metric) }));
+  const max = Math.max(...vals.map(v => v.v)) * 1.25 || 1;
+  const padL = 14, padB = 26, bw = Math.min(120, (w - padL * 2) / vals.length - 24);
+  vals.forEach((v, i) => {
+    const x = padL + i * ((w - padL * 2) / vals.length) + ((w - padL * 2) / vals.length - bw) / 2;
+    const bh = (h - padB - 24) * (v.v / max);
+    c.fillStyle = i ? '#eb6834' : '#9fb9d8';
+    c.fillRect(x, h - padB - bh, bw, bh);
+    c.fillStyle = '#0b0b0b';
+    c.textAlign = 'center';
+    c.font = '600 15px system-ui, sans-serif';
+    c.fillText(fmt(metric, v.v), x + bw / 2, h - padB - bh - 7);
+    c.font = '12px system-ui, sans-serif';
+    c.fillStyle = '#52514e';
+    c.fillText(v.label, x + bw / 2, h - 8);
+  });
+  const a = valueOf('early', metric), b = valueOf('late', metric);
+  const diff = b - a, pct = a ? Math.round(100 * (b / a - 1)) : 0;
+  const name = D.metrics.find(m => m.id === metric).label.toLowerCase();
+  const tail = ' Числа — в среднем за один выпуск: до кампании их три, после — два.';
+  document.getElementById('read').innerHTML = (Math.abs(pct) < 5
+    ? `<b>${name}</b> почти не изменился: ${fmt(metric, a)} → ${fmt(metric, b)}. На этой метрике кампании не видно.`
+    : `<b>${name}</b>: ${fmt(metric, a)} → ${fmt(metric, b)} — ${diff > 0 ? 'рост' : 'падение'} на ${Math.abs(pct)} %.`) + tail;
+}
+
+function drawHist() {
+  const { c, w, h } = ctxOf(document.getElementById('hist'));
+  const bins = [[0, 45], [45, 55], [55, 65], [65, 75], [75, 85], [85, 101]];
+  const src = D[scope];
+  const share = period => {
+    const a = src[period].entry;
+    return bins.map(([lo, hi]) => a.filter(v => v >= lo && v < hi).length / (a.length || 1));
+  };
+  const e = share('early'), l = share('late');
+  const max = Math.max(...e, ...l) * 1.2 || 1;
+  const padL = 6, padB = 30, gw = (w - padL * 2) / bins.length;
+  bins.forEach(([lo, hi], i) => {
+    const x = padL + i * gw;
+    [[e[i], '#9fb9d8', 0], [l[i], '#eb6834', 1]].forEach(([v, col, k]) => {
+      const bh = (h - padB - 10) * (v / max);
+      c.fillStyle = col;
+      c.fillRect(x + 6 + k * (gw - 16) / 2, h - padB - bh, (gw - 16) / 2 - 2, bh);
+    });
+    c.fillStyle = '#52514e';
+    c.textAlign = 'center';
+    c.fillText(hi > 100 ? `${lo}+` : `${lo}–${hi}`, x + gw / 2, h - 12);
+  });
+  const me = mean(src.early.entry), ml = mean(src.late.entry);
+  const dt = mean(D.takers.late.entry) - mean(D.takers.early.entry);
+  const dc = mean(D.cohort.late.entry) - mean(D.cohort.early.entry);
+  const who = scope === 'takers' ? 'у тех, кто сдаёт профиль' : 'у всего выпуска';
+  const move = x => x < -0.5 ? 'ниже' : (x > 0.5 ? 'выше' : 'почти так же');
+  document.getElementById('readHist').innerHTML =
+    `По горизонтали — входной уровень: процент диагностики МЦКО в 10 классе. По вертикали — какая ` +
+    `доля группы попала в эту полосу. Выпуски ${D.entry_years[0]}–${D.entry_years[D.entry_years.length - 1]}.<br>` +
+    `Средний входной уровень ${who}: <b>${ru(me)}</b> → <b>${ru(ml)}</b> %.` +
+    (scope === 'takers'
+      ? ' Переключи на «весь выпуск» и сравни: если выпуски не стали слабее, то дело в том, кто из них идёт на профиль.'
+      : ` У всего выпуска уровень стал ${move(dc)} (${ru(dc)} п.п.), а у сдающих профиль — ${move(dt)} ` +
+        `(${ru(dt)} п.п.). Профиль сдаёт уже не отобранный сильный, а средний выпускник.`);
+}
+
+function drawGaming() {
+  const steps = D.gaming;
+  const slider = document.getElementById('cut');
+  slider.max = String(steps.length - 1);
+  const s = steps[+slider.value], base = steps[0];
+  document.getElementById('cutOut').textContent = `${s.cut} человек`;
+  const cards = [
+    { k: 'Средний балл', v: ru(s.avg), d: s.avg - base.avg, f: x => ru(x) },
+    { k: 'Сумма баллов', v: String(s.total), d: s.total - base.total, f: x => String(Math.round(x)) },
+    { k: `Сдали на ${D.good} и выше`, v: String(s.top), d: s.top - base.top, f: x => String(Math.round(x)) },
+    { k: 'Сдают профиль', v: String(s.n), d: s.n - base.n, f: x => String(Math.round(x)) },
+  ];
+  document.getElementById('nums').innerHTML = cards.map(c => {
+    const cls = c.d > 0 ? 'up' : (c.d < 0 ? 'down' : 'flat');
+    const sign = c.d > 0 ? '+' : (c.d < 0 ? '−' : '');
+    return `<div class="num"><div class="k">${esc(c.k)}</div><div class="v">${esc(c.v)}</div>
+            <div class="d ${cls}">${c.d ? sign + c.f(Math.abs(c.d)) : 'без изменений'}</div></div>`;
+  }).join('');
+  document.getElementById('gameNote').textContent = s.cut === 0
+    ? 'Пока никого не отговорили. Подвигай ползунок и следи за всеми четырьмя числами сразу.'
+    : `Средний балл вырос на ${ru(s.avg - base.avg)}, и при этом сумма баллов упала на ${base.total - s.total}` +
+      (s.top < base.top ? `, а сильных результатов стало ${s.top} вместо ${base.top}` : '') +
+      '. Цель выполнена, школа стала хуже.';
+}
+
+function bar(id, items, current, onPick) {
+  const el = document.getElementById(id);
+  el.querySelectorAll('.tab').forEach(t => t.remove());
+  items.forEach(it => {
+    const b = document.createElement('button');
+    b.className = 'tab';
+    b.textContent = it.label;
+    b.setAttribute('aria-pressed', String(it.id === current()));
+    b.onclick = () => { onPick(it.id); redraw(); };
+    el.appendChild(b);
+  });
+}
+
+// Блоки включаются по наличию данных: сцена 3.3 получает только состав, сцена 4.1 — только ползунок.
+const HAS = {bars: !!D.values, hist: !!D.takers, gaming: !!D.gaming};
+function redraw() {
+  if (HAS.bars) { bar('metrics', D.metrics, () => metric, v => metric = v); drawBars(); }
+  if (HAS.hist) { bar('scopes', D.scopes, () => scope, v => scope = v); drawHist(); }
+  if (HAS.gaming) drawGaming();
+  ['block-bars', 'block-hist', 'block-gaming'].forEach((id, i) => {
+    const el = document.getElementById(id);
+    if (el) el.hidden = !([HAS.bars, HAS.hist, HAS.gaming][i]);
+  });
+}
+
+if (document.getElementById('cut')) document.getElementById('cut').oninput = drawGaming;
+window.addEventListener('resize', () => { if (HAS.bars) drawBars(); if (HAS.hist) drawHist(); });
+redraw();
+</script>
+</body>
+</html>

@@ -1,0 +1,263 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Дерево метрик</title>
+<style>
+  :root {
+    color-scheme: light;
+    --surface: #fcfcfb; --ink: #0b0b0b; --ink2: #52514e; --muted: #898781;
+    --grid: #e1e0d9; --axis: #c3c2b7; --s1: #2a78d6; --s2: #eb6834; --good: #006300; --bad: #b5271b;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--surface); color: var(--ink);
+         font: 15px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif; }
+  .wrap { max-width: 860px; margin: 0 auto; padding: 16px; }
+  h1 { font-size: 18px; margin: 0 0 4px; font-weight: 600; letter-spacing: -0.01em; }
+  .sub { color: var(--ink2); margin: 0 0 14px; }
+
+  .tray { display: flex; flex-wrap: wrap; gap: 7px; padding: 10px; border: 1px solid var(--grid);
+          border-radius: 12px; background: #fff; margin-bottom: 14px; min-height: 52px; }
+  .card { font: inherit; font-size: 13.5px; padding: 7px 11px; border-radius: 9px;
+          border: 1px solid var(--axis); background: #fff; color: var(--ink); cursor: pointer;
+          text-align: left; }
+  .card[aria-pressed="true"] { border-color: var(--s2); background: #fff5ef; color: var(--s2); }
+  .tray .none { color: var(--muted); font-size: 13.5px; align-self: center; }
+
+  .node { border: 1px solid var(--grid); border-radius: 12px; background: #fff; padding: 10px 12px; }
+  .node .label { font-weight: 600; }
+  .node .value { color: var(--muted); font-size: 13px; font-variant-numeric: tabular-nums; }
+  .kids { margin: 8px 0 0 12px; padding-left: 12px; border-left: 2px solid var(--grid);
+          display: grid; gap: 8px; }
+  .op { color: var(--muted); font-size: 12px; margin: 2px 0 0; }
+
+  .slot { border: 1px dashed var(--axis); border-radius: 10px; background: #fbfbf8; padding: 9px 11px;
+          cursor: pointer; min-height: 44px; display: flex; align-items: center; gap: 8px;
+          font-size: 13.5px; color: var(--muted); }
+  .slot.filled { border-style: solid; border-color: var(--grid); background: #fff; color: var(--ink); }
+  .slot.hot { border-color: var(--s2); background: #fff5ef; }
+  .slot.ok { border-color: var(--good); }
+  .slot.no { border-color: var(--bad); }
+  .slot .mark { margin-left: auto; font-size: 12px; }
+  .slot.ok .mark { color: var(--good); }
+  .slot.no .mark { color: var(--bad); }
+
+  .row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 14px; }
+  .btn { font: inherit; padding: 8px 15px; border-radius: 9px; border: 1px solid var(--s1);
+         background: var(--s1); color: #fff; cursor: pointer; }
+  .btn.ghost { background: #fff; color: var(--ink2); border-color: var(--axis); }
+  .btn[disabled] { opacity: .45; cursor: default; }
+  .msg { margin-top: 12px; padding: 10px 12px; border-radius: 10px; background: #f3f2ec;
+         font-size: 14px; }
+  .msg.ok { background: #eef6ee; color: var(--good); }
+  .msg.no { background: #fdf0ee; color: var(--bad); }
+
+  .phase2 { margin-top: 16px; border-top: 1px solid var(--grid); padding-top: 14px; }
+  .phase2 h2 { font-size: 15px; margin: 0 0 4px; }
+  .leaf { border: 1px solid var(--grid); border-radius: 10px; background: #fff; padding: 9px 11px;
+          margin-top: 8px; }
+  .leaf .q { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+  .leaf .q span { flex: 1 1 180px; font-size: 14px; }
+  .pick { font: inherit; font-size: 13px; padding: 5px 10px; border-radius: 999px;
+          border: 1px solid var(--axis); background: #fff; color: var(--ink2); cursor: pointer; }
+  .pick[aria-pressed="true"] { background: var(--s1); border-color: var(--s1); color: #fff; }
+  .why { margin-top: 7px; font-size: 13px; color: var(--ink2); }
+  .fade { animation: fade .22s ease-out; }
+  @keyframes fade { from { opacity: 0; transform: translateY(3px); } to { opacity: 1; transform: none; } }
+  @media (prefers-reduced-motion: reduce) { .fade { animation: none; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1 id="title">Дерево метрик</h1>
+  <p class="sub" id="sub"></p>
+
+  <div class="tray" id="tray"></div>
+  <div id="tree"></div>
+
+  <div class="row">
+    <button class="btn" id="check">Проверить дерево</button>
+    <button class="btn ghost" id="reset">Собрать заново</button>
+  </div>
+  <div id="msg"></div>
+  <div class="phase2" id="phase2" hidden>
+    <h2>На что школа может влиять</h2>
+    <p class="sub">Отметь каждый нижний лист: школа может его двигать или нет.</p>
+    <div id="leaves"></div>
+    <div class="row"><button class="btn" id="check2">Проверить</button></div>
+    <div id="msg2"></div>
+  </div>
+</div>
+<script>
+const DATA = {"title": "Дерево метрик", "sub": "Цель: средний балл ЕГЭ по профильной математике. 2025/26, выпускников 77, сдавали профиль 68.", "tree": {"nodes": [{"id": "root", "label": "Средний балл ЕГЭ по профильной математике", "value": "62,9", "children": ["per_student", "who"], "owned": true}, {"id": "per_student", "label": "Как сдаёт каждый, кто пришёл на экзамен", "value": "в среднем 62,9", "children": ["level_march", "gain"], "owned": true}, {"id": "who", "label": "Кого вообще считают", "value": "68 из 77", "children": ["graduates", "share"], "owned": true}, {"id": "level_march", "label": "Знания к марту", "value": "школа влияет", "children": ["school_hours", "outside"], "owned": true}, {"id": "gain", "label": "Прирост с марта по июнь", "value": "школа влияет", "children": [], "owned": true}, {"id": "graduates", "label": "Сколько выпускников в школе", "value": "77", "children": [], "owned": false, "why": "школа не решает, сколько детей доучится до 11 класса"}, {"id": "share", "label": "Какая доля из них выбирает профиль", "value": "88 %", "children": [], "owned": true}, {"id": "school_hours", "label": "Школьные уроки математики", "value": "школа влияет", "children": [], "owned": true}, {"id": "outside", "label": "Подготовка вне школы", "value": "школа не влияет", "children": [], "owned": false, "why": "репетитор и самоподготовка в данные школы не попадают, а на балл влияют сильно"}, {"id": "x_absence", "label": "Пропуски уроков в 11 классе", "extra": true, "children": [], "why": "влияет на знания, но это не отдельная часть цели: сидит внутри «знаний к марту»"}, {"id": "x_teacher", "label": "Строгость учителя на уроках", "extra": true, "children": [], "why": "двигает школьную оценку, а не балл ЕГЭ: экзамен проверяет не школа"}], "root": "root"}};
+const T = DATA.tree, BY = {};
+T.nodes.forEach(n => BY[n.id] = n);
+const PARENT = {};
+T.nodes.forEach(n => (n.children || []).forEach(c => PARENT[c] = n.id));
+const PLACED = {};        // slotKey -> nodeId
+let picked = null, checked = false;
+
+const esc = s => String(s).replace(/[&<>]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
+const cap = s => s ? s[0].toUpperCase() + s.slice(1) : '';
+const slots = parent => (BY[parent].children || []).map((_, i) => `${parent}:${i}`);
+const placedUnder = parent => slots(parent).map(k => PLACED[k]).filter(Boolean);
+const isLeaf = id => !(BY[id].children || []).length;
+
+document.getElementById('title').textContent = DATA.title;
+document.getElementById('sub').textContent = DATA.sub;
+
+function opLabel(parent) {
+  if (parent === 'root') return 'зависит от того, как сдаёт каждый, и от того, кого считают';
+  if (parent === 'who') return 'сколько выпускников × какая их доля идёт на профиль';
+  if (parent === 'per_student') return 'из чего складывается балл одного ученика';
+  return 'из чего это складывается';
+}
+
+function renderNode(id) {
+  const n = BY[id], kids = n.children || [];
+  const head = `<div class="label">${esc(n.label)}</div><div class="value">${esc(n.value)}</div>`;
+  if (!kids.length) return `<div class="node">${head}</div>`;
+  const body = slots(id).map(key => {
+    const got = PLACED[key];
+    if (!got) return `<div class="slot" data-slot="${key}">перетащи сюда: нажми карточку, потом это место</div>`;
+    const cls = checked ? (correctUnder(id).includes(got) ? ' ok' : ' no') : '';
+    const mark = checked ? `<span class="mark">${correctUnder(id).includes(got) ? '✓' : '✗'}</span>` : '';
+    return `<div class="slot filled${cls}" data-slot="${key}">
+              <span>${esc(BY[got].label)}</span>${mark}</div>` +
+           (isLeaf(got) ? '' : `<div class="kids">${renderSlotsOf(got)}</div>`);
+  }).join('');
+  return `<div class="node">${head}<p class="op">${esc(opLabel(id))}</p>
+            <div class="kids">${body}</div></div>`;
+}
+
+function renderSlotsOf(id) {
+  return slots(id).map(key => {
+    const got = PLACED[key];
+    if (!got) return `<div class="slot" data-slot="${key}">здесь чего-то не хватает</div>`;
+    const cls = checked ? (correctUnder(id).includes(got) ? ' ok' : ' no') : '';
+    const mark = checked ? `<span class="mark">${correctUnder(id).includes(got) ? '✓' : '✗'}</span>` : '';
+    return `<div class="slot filled${cls}" data-slot="${key}"><span>${esc(BY[got].label)}</span>${mark}</div>` +
+           (isLeaf(got) ? '' : `<div class="kids">${renderSlotsOf(got)}</div>`);
+  }).join('');
+}
+
+const correctUnder = parent => BY[parent].children || [];
+
+function freeCards() {
+  const used = new Set(Object.values(PLACED));
+  return T.nodes.filter(n => n.id !== T.root && !used.has(n.id)).map(n => n.id);
+}
+
+function render() {
+  const cards = freeCards();
+  document.getElementById('tray').innerHTML = cards.length
+    ? cards.map(id => `<button class="card" data-card="${id}" aria-pressed="${picked === id}">${esc(BY[id].label)}</button>`).join('')
+    : '<span class="none">Все карточки расставлены — проверяй.</span>';
+  document.getElementById('tree').innerHTML = renderNode(T.root);
+  document.getElementById('tree').classList.add('fade');
+}
+
+document.addEventListener('click', e => {
+  const card = e.target.closest('[data-card]');
+  if (card) { picked = picked === card.dataset.card ? null : card.dataset.card; checked = false; msg(''); render(); return; }
+  const slot = e.target.closest('[data-slot]');
+  if (slot) {
+    const key = slot.dataset.slot;
+    if (PLACED[key] && !picked) { freeSubtree(key); }         // нажатие по занятому месту освобождает его
+    else if (picked) { PLACED[key] = picked; picked = null; }
+    checked = false; msg(''); render();
+  }
+});
+
+// Освобождая место, снимаем и всё, что стоит под ним: иначе карточки-дети остаются занятыми
+// и исчезают из лотка (найдено ревью 2026-10-01).
+function freeSubtree(key) {
+  const node = PLACED[key];
+  delete PLACED[key];
+  if (!node) return;
+  Object.keys(PLACED).filter(k => k.startsWith(node + ':')).forEach(freeSubtree);
+}
+
+function msg(text, cls) {
+  const el = document.getElementById('msg');
+  el.innerHTML = text ? `<div class="msg ${cls || ''}">${esc(text)}</div>` : '';
+}
+
+document.getElementById('reset').onclick = () => {
+  Object.keys(PLACED).forEach(k => delete PLACED[k]);
+  picked = null; checked = false; msg(''); render();
+  document.getElementById('phase2').hidden = true;
+};
+
+document.getElementById('check').onclick = () => {
+  checked = true;
+  const parents = T.nodes.filter(n => (n.children || []).length).map(n => n.id);
+  const wrong = [], empty = [], extras = [];
+  parents.forEach(p => {
+    const got = placedUnder(p), need = correctUnder(p);
+    if (got.length < need.length) empty.push(p);
+    got.forEach(id => { if (!need.includes(id)) wrong.push(id); });
+    got.filter(id => BY[id].extra).forEach(id => extras.push(BY[id]));
+  });
+  render();
+  if (empty.length && !wrong.length) {
+    msg('Пустые места ещё остались. Подсказка: карточек больше, чем мест, — часть из них в дерево не входит.');
+  } else if (extras.length) {
+    msg('Вот эта карточка в дерево не входит: «' + extras[0].label + '». ' + cap(extras[0].why) + '.', 'no');
+  } else if (wrong.length) {
+    msg('Не всё на месте. Подумай так: средний балл зависит от двух разных вещей — как сдаёт каждый, кто пришёл, и кто вообще попадает в подсчёт. Карточки, которые никуда не встают, в дерево и не входят.', 'no');
+  } else {
+    msg('Дерево собрано. Теперь главное: продакт не двигает верхнее число напрямую — он двигает нижние.', 'ok');
+    showPhase2();
+  }
+};
+
+function showPhase2() {
+  const leaves = T.nodes.filter(n => n.id !== T.root && isLeaf(n.id) && PARENT[n.id]);
+  document.getElementById('leaves').innerHTML = leaves.map(n => `
+    <div class="leaf" data-leaf="${n.id}">
+      <div class="q"><span>${esc(n.label)}</span>
+        <button class="pick" data-own="1" aria-pressed="false">школа влияет</button>
+        <button class="pick" data-own="0" aria-pressed="false">школа не влияет</button>
+      </div>
+      <div class="why" hidden></div>
+    </div>`).join('');
+  document.getElementById('phase2').hidden = false;
+}
+
+document.addEventListener('click', e => {
+  const pick = e.target.closest('[data-own]');
+  if (!pick) return;
+  const leaf = pick.closest('[data-leaf]');
+  leaf.querySelectorAll('[data-own]').forEach(b => b.setAttribute('aria-pressed', String(b === pick)));
+});
+
+document.getElementById('check2').onclick = () => {
+  const leaves = [...document.querySelectorAll('[data-leaf]')];
+  let answered = 0, right = 0;
+  leaves.forEach(leaf => {
+    const n = BY[leaf.dataset.leaf];
+    const pressed = leaf.querySelector('[data-own][aria-pressed="true"]');
+    const why = leaf.querySelector('.why');
+    if (!pressed) { why.hidden = true; return; }
+    answered++;
+    const ok = (pressed.dataset.own === '1') === !!n.owned;
+    right += ok ? 1 : 0;
+    why.hidden = false;
+    why.textContent = ok
+      ? (n.owned ? 'Верно: на это у школы есть действия.' : 'Верно. ' + cap(n.why))
+      : (n.owned ? 'Сюда школа как раз дотягивается: уроки, занятия, расписание.' : 'Нет. ' + cap(n.why));
+    why.style.color = ok ? 'var(--good)' : 'var(--bad)';
+  });
+  const el = document.getElementById('msg2');
+  el.innerHTML = answered < leaves.length
+    ? '<div class="msg">Отметь все листья.</div>'
+    : `<div class="msg ${right === leaves.length ? 'ok' : ''}">Верно: ${right} из ${leaves.length}. ` +
+      'Листья, на которые школа не влияет, не перестают влиять на результат — их просто нельзя записать себе в задачу.</div>';
+};
+
+render();
+</script>
+</body>
+</html>

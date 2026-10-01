@@ -1,0 +1,219 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Различимо или нет</title>
+<style>
+  :root {
+    color-scheme: light;
+    --surface: #fcfcfb; --ink: #0b0b0b; --ink2: #52514e; --muted: #898781;
+    --grid: #e1e0d9; --axis: #c3c2b7; --s1: #2a78d6; --s2: #eb6834; --good: #006300; --bad: #b5271b;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--surface); color: var(--ink);
+         font: 15px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif; }
+  .wrap { max-width: 860px; margin: 0 auto; padding: 16px; }
+  h1 { font-size: 18px; margin: 0 0 4px; font-weight: 600; letter-spacing: -0.01em; }
+  .sub { color: var(--ink2); margin: 0 0 14px; }
+
+  .bar { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-bottom: 10px; }
+  .bar .cap { font-size: 12px; color: var(--muted); }
+  .tab { font: inherit; font-size: 13px; padding: 6px 11px; border-radius: 999px;
+         border: 1px solid var(--axis); background: #fff; color: var(--ink2); cursor: pointer; }
+  .tab[aria-pressed="true"] { background: var(--s1); border-color: var(--s1); color: #fff; }
+  .card { border: 1px solid var(--grid); border-radius: 12px; background: #fff; padding: 12px 14px; }
+  canvas { display: block; width: 100%; }
+
+  .ctl { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin: 12px 0 4px; }
+  .ctl label { font-size: 13px; color: var(--ink2); }
+  input[type=range] { flex: 1 1 180px; accent-color: var(--s2); }
+  .btn { font: inherit; padding: 8px 15px; border-radius: 9px; border: 1px solid var(--s1);
+         background: var(--s1); color: #fff; cursor: pointer; }
+  .btn.ghost { background: #fff; color: var(--ink2); border-color: var(--axis); }
+
+  .verdict { margin-top: 12px; padding: 10px 12px; border-radius: 10px; font-size: 14px;
+             background: #f3f2ec; }
+  .verdict.vis { background: #eef6ee; color: var(--good); }
+  .verdict.no { background: #fdf0ee; color: var(--bad); }
+  .verdict b { font-variant-numeric: tabular-nums; }
+  .hist { margin-top: 12px; font-size: 13px; color: var(--ink2); }
+  .hist b { color: var(--ink); font-variant-numeric: tabular-nums; }
+  .mde { margin-top: 10px; font-size: 13px; color: var(--ink2); }
+  .fade { animation: fade .22s ease-out; }
+  @keyframes fade { from { opacity: 0; } to { opacity: 1; } }
+  @media (prefers-reduced-motion: reduce) { .fade { animation: none; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1 id="title">Различимо или нет</h1>
+  <p class="sub" id="sub"></p>
+
+  <div class="bar" id="metrics"><span class="cap">мерим:</span></div>
+  <div class="card">
+    <canvas id="plot" height="190"></canvas>
+    <div class="verdict" id="verdict">Нажми «Перемешать»: выпуск разделится на две случайные половины.</div>
+  </div>
+
+  <div class="ctl">
+    <label for="size">В каждой группе:</label>
+    <input type="range" id="size" min="10" max="80" step="10" value="40">
+    <output id="sizeOut">40 человек</output>
+  </div>
+  <div class="ctl">
+    <label for="eff">Настоящий эффект занятий:</label>
+    <input type="range" id="eff" min="0" max="15" step="1" value="0">
+    <output id="effOut">0 баллов</output>
+  </div>
+  <div class="ctl">
+    <button class="btn" id="shuffle">Перемешать</button>
+    <button class="btn ghost" id="clear">Начать заново</button>
+  </div>
+  <div class="mde" id="mde"></div>
+  <div class="hist" id="hist"></div>
+</div>
+<script>
+const DATA = {"title": "Различимо или нет", "sub": "Выпуск делится на две случайные половины. Вмешательства нет — посмотри на разницу.", "data": {"score": [46, 63, 66, 63, 56, 45, 69, 88, 72, 49, 65, 73, 86, 30, 83, 53, 72, 66, 80, 30, 61, 66, 73, 78, 59, 70, 26, 79, 48, 70, 71, 60, 73, 78, 87, 73, 62, 79, 46, 88, 42, 18, 63, 81, 81, 38, 56, 78, 56, 66, 53, 63, 78, 88, 65, 83, 41, 87, 47, 40, 59, 65, 74, 77, 57, 55, 57, 44, 77, 46, 37, 61, 87, 61, 67, 34, 64, 81, 50, 73, 69, 61, 79, 63, 71, 25, 67, 33, 58, 42, 75, 19, 85, 70, 86, 33, 82, 45, 31, 61, 45, 72, 52, 45, 43, 74, 79, 41, 54, 73, 33, 61, 63, 74, 92, 80, 89, 67, 69, 59, 32, 92, 33, 79, 73, 61, 44, 27, 25, 82, 62, 84, 72, 43, 71, 43, 52, 70, 76, 67, 79, 68, 51, 73, 77, 82, 78, 41, 35, 57, 55, 44, 55, 33, 60, 68, 86, 89, 57, 59, 70, 69, 71, 42, 55, 73, 64, 81, 63, 31, 73, 75, 27, 68, 58, 64, 78, 67, 58, 77, 59, 68, 52, 83, 74, 35, 57, 64, 43, 34, 86, 74, 68, 58, 77, 35, 46, 11, 55, 51, 79, 74, 71, 59, 64, 69, 41, 45, 51, 51, 62, 37, 69, 64, 83, 75, 75, 51, 43, 82, 38, 67, 48, 54, 57, 51, 38, 72, 24, 58, 67, 51, 49, 34, 64, 32, 76, 77, 69, 46, 37, 34, 34, 91, 51, 33, 85, 34, 68, 59, 90], "gain": [2.0, 8.0, 19.0, 8.0, 10.0, 9.0, 13.0, 11.0, 3.0, 1.0, 0.0, 0.0, 8.0, -13.0, 6.0, -1.0, 10.0, -10.0, 15.0, -17.0, -5.0, 34.0, 19.0, 11.0, 0.0, 9.0, -15.0, 15.0, 1.0, 0.0, -2.0, 14.0, 20.0, 11.0, 2.0, 16.0, -6.0, 2.0, -2.0, 15.0, -2.0, -20.0, 10.0, 16.0, 7.0, -13.0, -4.0, 7.0, -17.0, 12.0, -18.0, 21.0, 26.0, 13.0, 1.0, 3.0, 9.0, 36.0, 5.0, 3.0, -13.0, 31.0, 31.0, 18.0, 13.0, -22.0, 8.0, -4.0, 4.0, -1.0, -3.0, -19.0, 17.0, -17.0, -2.0, -10.0, -5.0, 25.0, 1.0, 13.0, 15.0, -5.0, 17.0, 3.0, 14.0, -17.0, 0.0, -19.0, -11.0, -22.0, 6.0, -17.0, 20.0, 9.0, 23.0, 1.0, 11.0, 11.0, -7.0, 11.0, -1.0, 14.0, -5.0, -7.0, -10.0, -5.0, 6.0, -5.0, 8.0, 13.0, -7.0, -8.0, 0.0, 20.0, 7.0, 27.0, 10.0, 16.0, 12.0, -6.0, -22.0, 20.0, -18.0, 22.0, 7.0, 18.0, -26.0, -22.0, -27.0, 18.0, 6.0, 18.0, 19.0, -11.0, 12.0, 2.0, 6.0, 12.0, 18.0, -9.0, 14.0, 4.0, 10.0, 9.0, 9.0, -1.0, 13.0, 5.0, -14.0, 3.0, -8.0, -1.0, 4.0, -13.0, 2.0, 8.0, 6.0, 12.0, -2.0, -5.0, 3.0, 6.0, 39.0, -18.0, -15.0, 15.0, 4.0, 2.0, -5.0, -28.0, 13.0, 2.0, 0.0, 16.0, -2.0, -5.0, 15.0, 18.0, -2.0, 13.0, 5.0, 21.0, 4.0, 23.0, -11.0, -10.0, 3.0, 3.0, 2.0, -9.0, 22.0, 24.0, 11.0, -3.0, 0.0, -10.0, -7.0, -16.0, -7.0, -5.0, 1.0, 5.0, 1.0, 11.0, -2.0, -5.0, 18.0, 2.0, -25.0, -8.0, -9.0, 9.0, 8.0, 1.0, 19.0, 12.0, 23.0, 2.0, 11.0, 31.0, -14.0, 12.0, -8.0, 13.0, 3.0, 12.0, -5.0, -4.0, -4.0, 14.0, -2.0, 2.0, -13.0, -5.0, -5.0, -8.0, 4.0, 11.0, 12.0, -4.0, -9.0, -24.0, -7.0, 13.0, -4.0, -1.0, 10.0, -10.0, 14.0, 5.0, 18.0], "gain_mean": 3.3, "sd_level": 17.4, "sd_gain": 12.6, "z": 2.8, "sizes": [20, 40, 80, 160], "default_size": 40, "metrics": [{"id": "score", "label": "Балл ЕГЭ", "sd": 17.4}, {"id": "gain", "label": "Прирост от пробника к ЕГЭ", "sd": 12.6}]}};
+const D = DATA.data;
+let metric = D.metrics[0].id, last = null, log = [];
+
+const ru = (x, d = 1) => x.toFixed(d).replace('.', ',').replace('-', '−');
+const mean = a => a.reduce((s, v) => s + v, 0) / a.length;
+// «1 балл», «3 балла», «5 баллов» — иначе в тексте появляется «3 баллов»
+const plural = (n, [one, few, many]) => {
+  const d10 = n % 10, d100 = n % 100;
+  if (d10 === 1 && d100 !== 11) return `${n} ${one}`;
+  if (d10 >= 2 && d10 <= 4 && (d100 < 12 || d100 > 14)) return `${n} ${few}`;
+  return `${n} ${many}`;
+};
+const balls = n => plural(n, ['балл', 'балла', 'баллов']);
+document.getElementById('title').textContent = DATA.title;
+document.getElementById('sub').textContent = DATA.sub;
+
+const sd = () => D.metrics.find(m => m.id === metric).sd;
+const mde = m => D.z * sd() * Math.sqrt(2 / m);
+const size = () => +document.getElementById('size').value;
+const effect = () => +document.getElementById('eff').value;
+
+function sample(m) {
+  const pool = D[metric].slice();
+  for (let i = pool.length - 1; i > 0; i--) {         // перемешивание Фишера — Йетса
+    const j = Math.floor(Math.random() * (i + 1));
+    [pool[i], pool[j]] = [pool[j], pool[i]];
+  }
+  const need = Math.min(m * 2, pool.length);
+  const a = [], b = [];
+  for (let i = 0; i < need; i++) (i % 2 ? b : a).push(pool[i]);
+  return { a, b: b.map(v => v + effect()) };
+}
+
+function draw() {
+  const canvas = document.getElementById('plot');
+  const dpr = window.devicePixelRatio || 1;
+  const w = canvas.clientWidth || canvas.parentNode.clientWidth;
+  canvas.width = Math.round(w * dpr); canvas.height = Math.round(canvas.clientHeight * dpr);
+  const c = canvas.getContext('2d');
+  c.setTransform(dpr, 0, 0, dpr, 0, 0);
+  const h = canvas.clientHeight;
+  c.clearRect(0, 0, w, h);
+  c.font = '12px system-ui, sans-serif';
+  const all = D[metric];
+  const lo = Math.min(...all) - 2, hi = Math.max(...all) + 2 + effect();
+  const x = v => 40 + (w - 60) * (v - lo) / (hi - lo);
+  c.strokeStyle = '#e1e0d9';
+  c.beginPath(); c.moveTo(40, h - 24); c.lineTo(w - 20, h - 24); c.stroke();
+  c.fillStyle = '#898781'; c.textAlign = 'center';
+  for (let v = Math.ceil(lo / 20) * 20; v <= hi; v += 20) {
+    c.fillText(String(v), x(v), h - 8);
+    c.strokeStyle = '#f0efe9';
+    c.beginPath(); c.moveTo(x(v), 14); c.lineTo(x(v), h - 26); c.stroke();
+  }
+  if (!last) {
+    c.fillStyle = '#898781'; c.textAlign = 'left';
+    c.fillText('здесь появятся две группы', 44, h / 2);
+    return;
+  }
+  [['А', last.a, '#9fb9d8', 42], ['Б', last.b, '#eb6834', 110]].forEach(([name, arr, col, y]) => {
+    c.fillStyle = col;
+    arr.forEach(v => {
+      const jitter = (Math.random() - 0.5) * 26;
+      c.globalAlpha = 0.65;
+      c.beginPath(); c.arc(x(v), y + jitter, 3.2, 0, 6.3); c.fill();
+    });
+    c.globalAlpha = 1;
+    const m = mean(arr);
+    c.strokeStyle = '#0b0b0b'; c.lineWidth = 2;
+    c.beginPath(); c.moveTo(x(m), y - 22); c.lineTo(x(m), y + 22); c.stroke();
+    c.lineWidth = 1;
+    c.fillStyle = '#0b0b0b'; c.textAlign = 'left';
+    c.fillText(`${name}: ${ru(m)}`, 4, y + 4);
+  });
+}
+
+function shuffle() {
+  last = sample(size());
+  const diff = mean(last.b) - mean(last.a);
+  const bar = mde(size());
+  log.push(diff);
+  if (log.length > 12) log.shift();
+  draw();
+  const v = document.getElementById('verdict');
+  const visible = Math.abs(diff) >= bar;
+  // Цвет плашки — про вывод, а не про одну выборку: при эффекте меньше порога даже крупная
+  // случайная разница не значит «увидели» (ревью 2026-10-01).
+  const honest = effect() === 0 ? !visible : effect() >= bar;
+  v.className = 'verdict ' + (honest ? 'vis' : 'no');
+  const tail = effect() === 0
+    ? (visible ? 'И это при том, что вмешательства не было вовсе: просто так совпало.'
+               : 'Отличить её от случайной нельзя — и правильно, потому что она и есть случайная.')
+    : (effect() >= bar
+        ? `Эффект в ${balls(effect())} такой эксперимент различает. Для сравнения: весь средний прирост ` +
+          `с марта по июнь — около ${ru(D.gain_mean)} балла.`
+        : `Настоящий эффект есть (${balls(effect())}), но он меньше порога различимости. ` +
+          (visible ? 'Сейчас разница вышла большой — и именно так выглядит ложная находка: ' +
+                     'по одному такому результату нельзя сказать, что эффект увидели. '
+                   : '') + 'На таком количестве людей он теряется в разбросе.');
+  v.innerHTML = `Разница между группами: <b>${ru(diff)}</b>. Эксперимент такого размера различает ` +
+    `эффект от <b>${ru(bar)}</b>. ` + tail;
+  v.classList.add('fade');
+  const spread = log.length > 1 ? `${ru(Math.min(...log))} … ${ru(Math.max(...log))}` : '—';
+  document.getElementById('hist').innerHTML =
+    `Разницы, которые уже выпадали (${log.length}): <b>${spread}</b>. Вмешательство ни разу не менялось.`;
+}
+
+function refresh() {
+  document.getElementById('sizeOut').textContent = `${size()} человек`;
+  document.getElementById('effOut').textContent = balls(effect());
+  document.getElementById('mde').innerHTML =
+    `Разброс этой метрики — ${ru(sd())}. При группе в ${size()} человек различим эффект от ` +
+    `<b>${ru(mde(size()))}</b> балла — это тот размер эффекта, который такой эксперимент заметит ` +
+    'почти наверняка. Эффект поменьше иногда проскочит, а чаще потеряется в разбросе.';
+  document.getElementById('metrics').querySelectorAll('.tab').forEach(t => t.remove());
+  D.metrics.forEach(m => {
+    const b = document.createElement('button');
+    b.className = 'tab'; b.textContent = m.label;
+    b.setAttribute('aria-pressed', String(m.id === metric));
+    b.onclick = () => { metric = m.id; last = null; log = []; refresh(); draw();
+      document.getElementById('verdict').textContent =
+        'Метрика поменялась. Перемешай ещё раз и сравни, насколько теперь расходятся группы.'; };
+    document.getElementById('metrics').appendChild(b);
+  });
+  draw();
+}
+
+document.getElementById('shuffle').onclick = shuffle;
+document.getElementById('clear').onclick = () => {
+  last = null; log = []; refresh();
+  document.getElementById('hist').textContent = '';
+  document.getElementById('verdict').className = 'verdict';
+  document.getElementById('verdict').textContent =
+    'Нажми «Перемешать»: выпуск разделится на две случайные половины.';
+};
+document.getElementById('size').oninput = () => { refresh(); };
+document.getElementById('eff').oninput = () => { refresh(); };
+window.addEventListener('resize', draw);
+refresh();
+</script>
+</body>
+</html>
