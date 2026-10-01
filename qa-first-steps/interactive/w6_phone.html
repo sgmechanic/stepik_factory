@@ -136,12 +136,16 @@ function screenJournal(sc) {
                                             : esc(r.homework + ' %')}</td>
     </tr>`).join('');
   return `<div class="app">
-    <div class="top"><span class="zone" data-zone="class_title">${esc(sc.title)}</span><small>${esc(sc.date)}</small></div>
+    <div class="top"><span class="zone" data-zone="class_title">${esc(sc.title)}</span>
+      <small class="zone" data-zone="lesson_date">${esc(sc.date)}</small></div>
     <div class="body">
-      <table><thead><tr><th>Ученик</th><th>Оценка</th><th>Домашние задания</th></tr></thead>
+      <table><thead><tr>
+        <th class="zone" data-zone="code_col">Ученик</th>
+        <th class="zone" data-zone="grade_entry">Оценка</th>
+        <th class="zone" data-zone="hw_empty">Домашние задания</th></tr></thead>
       <tbody>${rows}</tbody></table>
       <div class="row">
-        <button class="btn" id="save"><span class="zone" data-zone="save_typo">${esc(sc.save_label)}</span></button>
+        <button class="btn" id="save"><span class="zone" data-zone="save_btn">${esc(sc.save_label)}</span></button>
         <label class="note zone" data-zone="offline"><input type="checkbox" id="offline"> связь пропала</label>
       </div>
       <div class="note" id="save-note">${esc(saveNote)}</div>
