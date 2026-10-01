@@ -85,6 +85,10 @@
 </div>
 <script>
 const DATA = {"title": "Отговорить слабейших", "sub": "Выпуск 2025/26: что происходит с четырьмя числами сразу.", "data": {"metrics": [{"id": "avg", "label": "Средний балл"}, {"id": "total", "label": "Сумма баллов"}, {"id": "top", "label": "Сдали на 70 и выше"}], "periods": [{"id": "early", "label": "До кампании", "years": ["2021/22", "2022/23", "2023/24"]}, {"id": "late", "label": "После кампании", "years": ["2024/25", "2025/26"]}], "scopes": [], "good": 70, "values": {"early": {"avg": 60.3, "total": 2353, "top": 13.7}, "late": {"avg": 61.0, "total": 4086, "top": 24.0}}, "entry_years": ["2022/23", "2023/24", "2024/25", "2025/26"], "gaming": [{"cut": 0, "n": 66, "avg": 62.5, "total": 4125, "top": 23}, {"cut": 5, "n": 61, "avg": 63.6, "total": 3878, "top": 23}, {"cut": 10, "n": 56, "avg": 64.8, "total": 3626, "top": 22}, {"cut": 15, "n": 51, "avg": 64.9, "total": 3312, "top": 20}, {"cut": 20, "n": 46, "avg": 65.5, "total": 3015, "top": 19}], "gaming_main": 10}};
+// Высота холста — из исходного атрибута, один раз, и закреплена в стилях. Иначе атрибут, перезаписанный
+// на dpr, и нулевой clientHeight iframe, загруженного на скрытом шаге, схлопывают график навсегда.
+function cssH(c) { if (!c.dataset.h) c.dataset.h = c.getAttribute('height') || 200; c.style.height = c.dataset.h + 'px'; return +c.dataset.h; }
+
 const D = DATA.data;
 // Экраны разные: на одном нет блока метрик, на другом — блока состава. Инициализация не
 // должна падать на отсутствующем ключе, иначе страница останется без скриптов целиком.
@@ -106,12 +110,13 @@ function ctxOf(canvas) {
   const dpr = window.devicePixelRatio || 1;
   const w = canvas.clientWidth || canvas.parentNode.clientWidth;
   canvas.width = Math.round(w * dpr);
-  canvas.height = Math.round(canvas.clientHeight * dpr);
+  const hh = cssH(canvas);
+  canvas.height = Math.round(hh * dpr);
   const c = canvas.getContext('2d');
   c.setTransform(dpr, 0, 0, dpr, 0, 0);
-  c.clearRect(0, 0, w, canvas.clientHeight);
+  c.clearRect(0, 0, w, hh);
   c.font = '12px system-ui, sans-serif';
-  return { c, w, h: canvas.clientHeight };
+  return { c, w, h: hh };
 }
 
 function drawBars() {
@@ -231,6 +236,14 @@ function redraw() {
 if (document.getElementById('cut')) document.getElementById('cut').oninput = drawGaming;
 window.addEventListener('resize', () => { if (HAS.bars) drawBars(); if (HAS.hist) drawHist(); });
 redraw();
+
+// Перерисовка при смене ширины — в том числе когда скрытый шаг Stepik становится видимым. Только по ширине:
+// перерисовка меняет содержимое, и реакция на любую смену размера могла бы зациклиться.
+let lastW = -1;
+if (window.ResizeObserver) new ResizeObserver(() => {
+  const bw = document.body.clientWidth;
+  if (bw !== lastW) { lastW = bw; (HAS.bars && drawBars(), HAS.hist && drawHist()); }
+}).observe(document.body);
 </script>
 </body>
 </html>
